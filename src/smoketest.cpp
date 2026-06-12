@@ -36,15 +36,27 @@ void setup() {
     Serial.printf("MAC    : %012llX\n", ESP.getEfuseMac());
     Serial.printf("Reset  : reason %d\n", (int)esp_reset_reason());
     i2cScan();
+
+    pinMode(PIN_GPS_PWR, OUTPUT);
+    digitalWrite(PIN_GPS_PWR, GPS_PWR_ACTIVE_LEVEL);   // power GPS (harmless if wired straight to 3V3)
+    Serial2.begin(GPS_BAUD, SERIAL_8N1, PIN_GPS_RX, PIN_GPS_TX);
+    Serial.printf("GPS UART on RX=%d TX=%d @ %d baud. Echoing NMEA below "
+                  "(lines starting with $ = good wiring; a fix needs sky view):\n",
+                  PIN_GPS_RX, PIN_GPS_TX, GPS_BAUD);
+
     pinMode(LED_BUILTIN, OUTPUT);
-    Serial.println("Heartbeat starting (LED on GPIO2 should blink)...");
 }
 
 void loop() {
-    static uint32_t n = 0;
-    digitalWrite(LED_BUILTIN, n & 1);
-    Serial.printf("alive %lu  uptime %lus  heap %u\n",
-                  n, millis() / 1000, ESP.getFreeHeap());
-    n++;
-    delay(500);
+    static uint32_t lastBeat = 0, gpsBytes = 0;
+    while (Serial2.available()) {
+        Serial.write(Serial2.read());
+        gpsBytes++;
+    }
+    if (millis() - lastBeat >= 2000) {
+        lastBeat = millis();
+        digitalWrite(LED_BUILTIN, (millis() / 2000) & 1);
+        Serial.printf("\n[uptime %lus  GPS bytes seen: %lu]\n",
+                      millis() / 1000, gpsBytes);
+    }
 }
