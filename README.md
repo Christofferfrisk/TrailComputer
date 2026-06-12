@@ -29,12 +29,12 @@ There are two main screens. You pick one in the settings page.
 **NAV** — a compass needle to the next hut, the distance, your arrival time, the
 climb left, your altitude, and the weather trend.
 
-![NAV screen](docs/img/nav.png)
+![NAV screen](docs/img/screen-nav.png)
 
 **MAP** — a north-up map: an arrow for you, squares for huts, a ring for your
 destination, and a scale bar. The same numbers sit on the right.
 
-![MAP screen](docs/img/map.png)
+![MAP screen](docs/img/screen-map.png)
 
 These two are drawn on a PC, so the fonts are a little different from the real
 e-paper. Run `python tools/preview_display.py` to redraw them yourself.
