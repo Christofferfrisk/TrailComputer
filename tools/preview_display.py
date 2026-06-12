@@ -11,13 +11,13 @@ import os
 from PIL import Image, ImageDraw, ImageFont
 
 W, H = 296, 128
-SCALE = 4
+SS = 6        # supersample: render at SS x logical resolution, then save
 FD = r"C:\Windows\Fonts"
 BLACK, WHITE = 0, 255
 
 
 def font(name, size):
-    return ImageFont.truetype(os.path.join(FD, name), size)
+    return ImageFont.truetype(os.path.join(FD, name), size * SS)
 
 
 F_TINY = font("arial.ttf", 8)
@@ -29,45 +29,50 @@ F_HUGE = font("arialbd.ttf", 20)
 
 
 class Epd:
+    """Draws in logical 296x128 coordinates but rasterises at SS x resolution.
+    Every primitive scales its coordinates; strokes are SS px wide so a 1 px
+    logical line stays 1 logical px. width() reports logical units so the
+    layout math in the render_* functions needs no changes."""
+
     def __init__(self):
-        self.img = Image.new("L", (W, H), WHITE)
+        self.img = Image.new("L", (W * SS, H * SS), WHITE)
         self.d = ImageDraw.Draw(self.img)
 
     # --- GxEPD2-like primitives ---
     def line(self, x0, y0, x1, y1, c=BLACK):
-        self.d.line((x0, y0, x1, y1), fill=c)
+        self.d.line((x0 * SS, y0 * SS, x1 * SS, y1 * SS), fill=c, width=SS)
     def line2(self, x0, y0, x1, y1, c=BLACK):
-        self.d.line((x0, y0, x1, y1), fill=c)
+        self.line(x0, y0, x1, y1, c)
         if abs(x1 - x0) >= abs(y1 - y0):
-            self.d.line((x0, y0 + 1, x1, y1 + 1), fill=c)
+            self.line(x0, y0 + 1, x1, y1 + 1, c)
         else:
-            self.d.line((x0 + 1, y0, x1 + 1, y1), fill=c)
+            self.line(x0 + 1, y0, x1 + 1, y1, c)
     def hline(self, x, y, w, c=BLACK):
-        self.d.line((x, y, x + w - 1, y), fill=c)
+        self.d.line((x * SS, y * SS, (x + w - 1) * SS, y * SS), fill=c, width=SS)
     def rect(self, x, y, w, h, c=BLACK):
-        self.d.rectangle((x, y, x + w - 1, y + h - 1), outline=c)
+        self.d.rectangle((x * SS, y * SS, (x + w - 1) * SS, (y + h - 1) * SS), outline=c, width=SS)
     def fillrect(self, x, y, w, h, c=BLACK):
-        self.d.rectangle((x, y, x + w - 1, y + h - 1), fill=c)
+        self.d.rectangle((x * SS, y * SS, (x + w - 1) * SS, (y + h - 1) * SS), fill=c)
     def roundrect(self, x, y, w, h, r, c=BLACK):
-        self.d.rounded_rectangle((x, y, x + w - 1, y + h - 1), radius=r, fill=c)
+        self.d.rounded_rectangle((x * SS, y * SS, (x + w - 1) * SS, (y + h - 1) * SS), radius=r * SS, fill=c)
     def circle(self, cx, cy, r, c=BLACK):
-        self.d.ellipse((cx - r, cy - r, cx + r, cy + r), outline=c)
+        self.d.ellipse(((cx - r) * SS, (cy - r) * SS, (cx + r) * SS, (cy + r) * SS), outline=c, width=SS)
     def fillcircle(self, cx, cy, r, c=BLACK):
-        self.d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=c)
+        self.d.ellipse(((cx - r) * SS, (cy - r) * SS, (cx + r) * SS, (cy + r) * SS), fill=c)
     def tri(self, x0, y0, x1, y1, x2, y2, c=BLACK):
-        self.d.polygon((x0, y0, x1, y1, x2, y2), fill=c)
+        self.d.polygon((x0 * SS, y0 * SS, x1 * SS, y1 * SS, x2 * SS, y2 * SS), fill=c)
     def pixel(self, x, y, c=BLACK):
-        self.d.point((x, y), fill=c)
+        self.d.rectangle((x * SS, y * SS, (x + 1) * SS - 1, (y + 1) * SS - 1), fill=c)
 
     # --- U8g2-like text (y = baseline) ---
     def text(self, x, y, s, fnt, inv=False):
-        self.d.text((x, y), s, font=fnt, fill=(WHITE if inv else BLACK), anchor="ls")
+        self.d.text((x * SS, y * SS), s, font=fnt, fill=(WHITE if inv else BLACK), anchor="ls")
     def width(self, s, fnt):
-        return self.d.textlength(s, font=fnt)
+        return self.d.textlength(s, font=fnt) / SS
     def textR(self, xr, y, s, fnt):
         self.text(xr - self.width(s, fnt), y, s, fnt)
     def textC(self, xc, y, s, fnt, inv=False):
-        self.d.text((xc, y), s, font=fnt, fill=(WHITE if inv else BLACK), anchor="ms")
+        self.d.text((xc * SS, y * SS), s, font=fnt, fill=(WHITE if inv else BLACK), anchor="ms")
 
 
 D2R = math.pi / 180
@@ -334,7 +339,7 @@ def render_map(e, vm):
 def save(e, name):
     out = os.path.join(os.path.dirname(__file__), "preview")
     os.makedirs(out, exist_ok=True)
-    big = e.img.resize((W * SCALE, H * SCALE), Image.LANCZOS)
+    big = e.img.resize((W * 3, H * 3), Image.LANCZOS)
     p = os.path.join(out, name + ".png")
     big.save(p)
     print("wrote", p)
