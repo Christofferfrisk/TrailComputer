@@ -1,0 +1,15 @@
+# Kungsleden sample route — approximate coordinates, VERIFY before trusting.
+# Columns: lat,lon,ele_m,name   (name non-empty marks an end-of-day destination)
+# Generated/replaced by tools/gpx_to_route.py. cumDist is computed at load.
+68.3590,18.7820,385,Abisko
+68.3010,18.6300,490,
+68.2480,18.5600,560,Abiskojaure
+68.1600,18.4800,690,
+68.1050,18.4600,790,Alesjaure
+68.0300,18.5400,860,
+67.9500,18.6200,1000,Tjäktja
+67.8700,18.9000,720,
+67.8200,19.0500,690,Sälka
+67.7300,19.2600,640,
+67.7150,19.4900,680,Singi
+67.6300,19.3000,690,Kebnekaise

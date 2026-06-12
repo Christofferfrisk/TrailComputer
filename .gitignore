@@ -1,0 +1,10 @@
+.pio/
+.vscode/
+.claude/
+*.pyc
+__pycache__/
+tools/preview/
+test/test_math.exe
+test/test_math.pdb
+*.obj
+*.ilk
