@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/img/logo.png" width="112" alt="Trail Computer logo">
+</p>
+
 # Trail Computer
 
 A small, battery-powered device that helps you navigate on long hikes with no
