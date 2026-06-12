@@ -334,8 +334,7 @@ def render_map(e, vm):
 def save(e, name):
     out = os.path.join(os.path.dirname(__file__), "preview")
     os.makedirs(out, exist_ok=True)
-    bw = e.img.point(lambda p: 255 if p > 140 else 0)        # threshold -> 1-bit feel
-    big = bw.resize((W * SCALE, H * SCALE), Image.NEAREST)
+    big = e.img.resize((W * SCALE, H * SCALE), Image.LANCZOS)
     p = os.path.join(out, name + ".png")
     big.save(p)
     print("wrote", p)
