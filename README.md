@@ -1,188 +1,227 @@
 # Trail Computer
 
-A battery-powered, fully-offline handheld **trail computer** for multi-day hiking
-(built around the Kungsleden in Swedish Lapland). It deep-sleeps and wakes on a
-button press to show navigation and weather on an e-paper screen. All route data,
-STF hut info, and configuration live on-device — no internet on the trail. A phone
-config portal (on-demand Wi-Fi) handles route/target/settings.
+A small, battery-powered device that helps you navigate on long hikes with no
+phone signal. It is built for the Kungsleden in Swedish Lapland.
 
-- **MCU:** DFRobot FireBeetle 2 ESP32-E N16R2 (DFR1139, ESP32-WROOM-32E-N16R2, with PSRAM)
-- **Display:** Waveshare 2.9" e-paper, 296×128, B/W, SSD1680
-- **Sensors:** BME280 (baro/temp/humidity), QMC5883L (compass), u-blox GPS (UART)
-- **Input:** one momentary button (wake + long-press for config)
+It sleeps almost all the time. You press a button, it wakes up, shows where you
+are and what the weather is doing on an e-paper screen, then goes back to sleep.
+Everything it needs — the trail, the huts, your settings — is stored on the
+device. You never need the internet on the trail.
+
+To change settings, you hold the button. The device turns on a short-lived
+Wi-Fi network. You connect with your phone and open a web page. No app to
+install.
+
+**Main parts**
+
+- **Brain:** DFRobot FireBeetle 2 ESP32-E N16R2 (DFR1139)
+- **Screen:** Waveshare 2.9" e-paper, 296×128, black/white
+- **Sensors:** BME280 (air pressure, temperature, humidity), QMC5883L (compass),
+  u-blox GPS
+- **Buttons:** one. Press to wake, hold to open settings.
 
 ---
 
-## Architecture
+## How it works
 
-A **"wake → do one cycle → sleep"** device. `setup()` *is* the whole cycle;
-`loop()` is empty. Each wake: read sensors → power GPS for a warm-start fix →
-read compass → fuse GPS-calibrated baro altitude → snap to route, compute
-remaining distance + Naismith ETA → render one e-paper screen → account energy →
-deep sleep. State that must survive sleep lives in `RTC_DATA_ATTR` (and mirrors to
-NVS so it survives a battery swap). The route table lives in flash, never RTC.
+The device does one thing each time it wakes, then sleeps. There is no running
+loop. One wake = one cycle:
 
-| File | Role |
+1. Read the sensors.
+2. Turn on the GPS and wait for a fix.
+3. Read the compass (with the GPS off, so it doesn't disturb the reading).
+4. Work out your altitude by combining GPS and air pressure.
+5. Find where you are on the trail. Work out the distance left and an arrival
+   time (Naismith's rule).
+6. Draw one screen.
+7. Count the energy used, then sleep.
+
+Anything that must survive sleep is kept in the chip's RTC memory and copied to
+flash, so it also survives a battery swap. The trail itself lives in flash and
+is never copied to RTC.
+
+**Where each part of the code lives**
+
+| File | What it does |
 |---|---|
-| `src/main.cpp` | wake-cycle orchestration |
-| `src/config.h` | pins, power model, thresholds (all **VERIFY** items) |
-| `src/state.{h,cpp}` | RTC/NVS persistent state, settings, trip log |
-| `src/geo.{h,cpp}` | haversine, bearing, snap-to-segment, cumulative distance |
-| `src/fusion.{h,cpp}` | GPS-calibrated altitude, ascent accumulator, pressure trend |
-| `src/gps.{h,cpp}` | MOSFET-switched warm-start fix (HDOP gate + timeout) |
-| `src/power.{h,cpp}` | mAh energy accounting, battery curve |
-| `src/sun.{h,cpp}` | sunrise/sunset → daylight remaining |
-| `src/display.{h,cpp}` | the e-paper screens (GxEPD2 + U8g2) |
-| `src/config_portal.{h,cpp}` | SoftAP + offline web UI, persists to NVS |
-| `src/route_table.h` | generated main route polyline + hut indices (from GPX) |
-| `src/spur_table.h` | generated Kebnekaise spur polyline (Nikkaluokta→Singi) |
-| `src/route_stages.h` | STF leg distances/times, shops, sauna, transport |
-| `src/route_spurs.h` | spur metadata (names/coords) for the timeline |
-| `tools/gpx_to_route.py` | GPX → simplified main route table |
-| `tools/build_spur.py` | GPX + OSM + DEM → simplified spur table |
-| `tools/preview_display.py` | render the e-paper screens to PNG on the PC |
+| `src/main.cpp` | runs the wake cycle |
+| `src/config.h` | pins, power model, thresholds (the **VERIFY** items) |
+| `src/state.{h,cpp}` | saved state, settings, trip log |
+| `src/geo.{h,cpp}` | distance, bearing, snapping to the trail |
+| `src/fusion.{h,cpp}` | altitude, total climb, pressure trend |
+| `src/gps.{h,cpp}` | switches GPS power, waits for a good fix |
+| `src/power.{h,cpp}` | energy accounting, battery curve |
+| `src/sun.{h,cpp}` | sunrise, sunset, daylight left |
+| `src/display.{h,cpp}` | the e-paper screens |
+| `src/config_portal.{h,cpp}` | the Wi-Fi settings page |
+| `src/route_table.h` | the main trail (generated from a GPX track) |
+| `src/spur_table.h` | the Kebnekaise side trail (generated) |
+| `src/route_stages.h` | hut distances, times, shops, sauna, transport |
+| `src/route_spurs.h` | side-trail names and coordinates |
+| `tools/gpx_to_route.py` | turn a GPX track into the main trail table |
+| `tools/build_spur.py` | build the side-trail table |
+| `tools/preview_display.py` | draw the screens on your PC as PNG images |
 
 ---
 
-## Bill of materials
+## Parts you need
 
 | Part | Notes |
 |---|---|
-| DFRobot FireBeetle 2 ESP32-E N16R2 (DFR1139) | onboard LiPo charging, low deep-sleep current; **GPIO16/D11 is NC** (PSRAM), GPIO5/D8 = WS2812 LED, GPIO27/D4 = user button |
-| Waveshare 2.9" e-paper 296×128 B/W (SSD1680) | **B/W only** — tri-color refreshes ~15 s |
-| u-blox GPS module | NEO-M9N (fast) or NEO-6M (budget); must have a **VBCKP** backup pin |
-| BME280 breakout | I²C, addr 0x76 |
-| QMC5883L magnetometer | I²C, addr 0x0D |
-| P-channel MOSFET + 100 kΩ gate pull-up | high-side switch for GPS power |
-| Momentary push button | wake; to GND |
-| 1S LiPo (or 18650) | charged via the FireBeetle USB-C |
-| Resistor divider for battery sense | e.g. 2× 100 kΩ → ratio 2.0 |
+| DFRobot FireBeetle 2 ESP32-E N16R2 (DFR1139) | charges a LiPo over USB-C, very low sleep current. Watch out: GPIO16/D11 is not connected, GPIO5 drives the onboard LED, GPIO27 is the onboard button. |
+| Waveshare 2.9" e-paper 296×128 black/white (SSD1680) | black/white only. The tri-colour version is too slow (~15 s per refresh). |
+| u-blox GPS module | NEO-M9N is fast, NEO-6M is cheap. It needs a backup-power pin for quick fixes. |
+| BME280 breakout | I²C, address 0x76 |
+| QMC5883L compass | I²C, address 0x0D |
+| P-channel MOSFET + 100 kΩ resistor | switches GPS power off during sleep |
+| Momentary push button | wakes the device; wired to ground |
+| 1S LiPo battery (or 18650) | charges through the board's USB-C port |
+| Two resistors for battery sensing | e.g. 2× 100 kΩ, giving a ratio of 2.0 |
 
 ---
 
-## Wiring
+## How to wire it
 
-Pins are defined in [`src/config.h`](src/config.h). **Every value is a `VERIFY`
-item** — confirm against the FireBeetle 2 ESP32-E silk→GPIO map before soldering.
+The pins are set in [`src/config.h`](src/config.h). Check each one against your
+own board's printed labels before you solder. The pins below are correct for the
+DFR1139.
 
-| Function | GPIO | Notes |
+| Connect | to GPIO | Notes |
 |---|---|---|
-| e-paper CS | 14 | D6 — **not 5**, which drives the onboard WS2812 RGB LED |
-| e-paper DC | 25 | D2 |
-| e-paper RST | 26 | D3 |
-| e-paper BUSY | 35 | A3, input-only (BUSY is push-pull) — **not 27**, the onboard user button |
-| e-paper SCK / MOSI | 18 / 23 | HW SPI defaults |
-| I²C SDA / SCL | 21 / 22 | BME280 + QMC5883L share the bus |
-| GPS RX / TX | 19 / 17 | ESP RX←GPS TX (19=MISO header, free), ESP TX→GPS RX; **16/D11 is NC on the N16R2**, 9600 baud |
-| GPS power MOSFET gate | 13 | high-side P-FET, **active LOW**, gate pull-up to source |
-| Wake button | 4 | RTC-capable, ext0, active-low (`INPUT_PULLUP`) |
-| Battery sense | 34 | through the divider (set `BAT_DIVIDER_RATIO`) |
+| e-paper CS | 14 | label D6. **Not** 5 — that pin drives the onboard LED. |
+| e-paper DC | 25 | label D2 |
+| e-paper RST | 26 | label D3 |
+| e-paper BUSY | 35 | label A3. **Not** 27 — that is the onboard button. |
+| e-paper SCK / MOSI | 18 / 23 | standard SPI pins |
+| I²C SDA / SCL | 21 / 22 | the BME280 and compass share these |
+| GPS RX / TX | 19 / 17 | board RX ← GPS TX, board TX → GPS RX. **Not** 16 — it is not connected on this board. 9600 baud. |
+| GPS power switch | 13 | P-MOSFET gate, on when low |
+| Wake button | 4 | wired to ground |
+| Battery sensing | 34 | through the two-resistor divider |
 
-**GPS power note:** the P-FET high-side switch assumes you switch the **3.3 V**
-rail with the gate driven directly from GPIO13 (gate pull-up keeps GPS off in
-sleep). If you switch raw VBAT or use an NPN/N-FET gate driver, flip
-`GPS_PWR_ACTIVE_LEVEL` to `HIGH`.
+**A note on GPS power.** The MOSFET switches the 3.3 V line and the gate is
+driven straight from GPIO13. While you are first testing on a breadboard, skip
+the MOSFET and run the GPS straight to 3.3 V — it's simpler. Add the switch
+later to save power. If you wire it differently, change `GPS_PWR_ACTIVE_LEVEL`.
 
-**Physical placement (learned the hard way):**
-- GPS antenna faces the sky, never behind the battery; keep its feed away from the compass.
-- Read the compass only while the GPS is powered down (the firmware already does this); keep it away from battery current leads; brass/nylon screws nearby; calibrate in the assembled case.
-- BME280 reads high from board self-heat → vented (PTFE) edge, thermally gapped; tune `BME_TEMP_OFFSET_C`.
-- Don't bend the e-paper FPC toward the front. Don't charge LiPo below 0 °C.
+**Where to place each part.** These matter more than they look:
+
+- Point the GPS antenna at the sky. Never put it behind the battery. Keep its
+  wire away from the compass.
+- The firmware only reads the compass while the GPS is off. Keep the compass
+  away from battery wires and steel. Calibrate it inside the finished case.
+- The BME280 reads a bit warm because the board heats it. Give it a vent and a
+  thermal gap, then correct the rest with `BME_TEMP_OFFSET_C`.
+- Don't bend the e-paper ribbon forward. Don't charge a LiPo below 0 °C.
 
 ---
 
-## Build & flash
+## How to build and flash
 
-PlatformIO (framework: arduino). If `pio` isn't on PATH, use `python -m platformio`.
+This is a PlatformIO project (Arduino framework). If the `pio` command isn't
+found, use `python -m platformio` instead.
 
 ```bash
-# main firmware
+# the real firmware
 pio run -e firebeetle2_esp32e -t upload --upload-port COM3
 pio device monitor -b 115200
 
-# bring-up helpers (separate envs, don't touch the main firmware):
-pio run -e smoketest -t upload   # chip info, I²C scan, LED blink (no peripherals)
-pio run -e wifitest  -t upload   # config portal standalone (join Wi-Fi TrailComputer)
+# two test builds for bring-up (they don't change the real firmware):
+pio run -e smoketest -t upload   # prints chip info, scans I²C, blinks the LED
+pio run -e wifitest  -t upload   # runs just the settings page over Wi-Fi
 ```
 
-The FireBeetle auto-resets into the bootloader. If an upload fails to sync, hold
-**BOOT**, tap **RST**, release BOOT, retry. The board uses a **CH340** USB-serial
-chip — install its driver if no COM port appears.
+The board resets into the bootloader on its own. If an upload won't start, hold
+**BOOT**, tap **RST**, let go of BOOT, and try again. The board uses a CH340
+USB chip — install its driver if no COM port shows up.
 
-> The device deep-sleeps after one cycle, so the monitor shows one burst then goes
-> quiet — that's normal. Press the wake button (or RST) for another cycle.
+The device sleeps after one cycle, so the monitor prints one burst and then goes
+quiet. That is normal. Press the button (or RST) to run another cycle.
 
 ---
 
 ## Tools
 
 ```bash
-# Regenerate the route table from a GPX (Topo GPS / Gaia / Waymarked Trails):
+# Rebuild the main trail from a GPX track (Topo GPS, Gaia, Waymarked Trails):
 python tools/gpx_to_route.py track.gpx --huts data/huts.csv --eps 150 --reverse --c > src/route_table.h
-#   --reverse : travel direction N→S (index 0 = Abisko)
-#   --eps     : Douglas-Peucker spacing in metres (~150)
-# Adding/removing huts shifts stop codes → re-pick hike Start/End in the portal.
+#   --reverse : walk north to south (index 0 = Abisko)
+#   --eps     : how much to simplify the line, in metres (~150)
+# Adding or removing huts changes the stop numbers, so re-pick your
+# Start and End in the settings page afterwards.
 
-# Preview the e-paper screens as PNG (no hardware needed):
-python tools/preview_display.py        # -> tools/preview/*.png
+# Draw the screens on your PC, no hardware needed:
+python tools/preview_display.py        # writes tools/preview/*.png
 
-# Regenerate the Kebnekaise spur (Nikkaluokta -> Kebnekaise -> Singi). Geometry
-# from a Topo GPS track + OSM "Kungsleden Etapp 9"; elevation from EU-DEM
-# (cached in data/*_track_ele.json):
+# Rebuild the Kebnekaise side trail (Nikkaluokta -> Kebnekaise -> Singi).
+# Shape from a GPS track plus OpenStreetMap; heights from EU-DEM:
 python tools/build_spur.py > src/spur_table.h
 
-# Host-side math tests (compiles the real src/*.cpp on the PC, runs 47 asserts
-# on geo/route/spur/fusion/sun; needs `pip install --user ziglang` once):
+# Run the maths tests on your PC (needs `pip install --user ziglang` once):
 test\run_tests.cmd
 ```
 
-Run the tests after any change to `geo`, `fusion`, `sun`, `route_util`, or after
-regenerating `route_table.h` — a failure means distances/ETA/daylight on the
-device would be wrong.
+Run the tests after you change `geo`, `fusion`, `sun`, or `route_util`, or after
+you rebuild the trail. If a test fails, the distances, arrival times, or
+daylight on the device would be wrong.
 
 ---
 
-## Usage
+## How to use it
 
-- **Short press** — wake, show the nav screen, sleep.
-- **Long press (hold ≥2 s at wake)** — config mode: brings up Wi-Fi AP
-  **`TrailComputer`** (open) → browse **`http://192.168.4.1`** from your phone to
-  set the route section (Start/End), target, day-planner pace, and settings. The
-  radio is on-demand only and shuts off after ~2 min idle.
+- **Press** the button: wake, show the navigation screen, sleep.
+- **Hold** the button (about 2 seconds): open settings. The device starts a
+  Wi-Fi network called **`TrailComputer`** (open, no password). Connect with
+  your phone and open **`http://192.168.4.1`**. There you set your Start and
+  End hut, your daily pace, and other options. The Wi-Fi turns itself off after
+  about two minutes.
 
-Screens: **NAV** (compass needle + distance + ETA/climb/alt + weather) or **MAP**
-(north-up dot map: heading arrow, nearby trail, hut markers, destination, scale
-bar) — pick which in the portal **Settings → Nav screen**. Plus **NO_FIX**,
-**ARRIVED / End of hike** (trip stats), **CONFIG**, **LOW_BATTERY**.
+**The screens**
+
+- **NAV** — a compass needle to the next hut, distance, arrival time, climb
+  left, altitude, and the weather trend.
+- **MAP** — a small north-up map: an arrow for you, squares for huts, a ring for
+  your destination, and a scale bar.
+
+Pick NAV or MAP in the settings page. You'll also see **NO FIX** (no GPS yet),
+**ARRIVED / End of hike** (with trip stats), **SETTINGS**, and **LOW BATTERY**.
 
 ---
 
-## Configuration & calibration
+## Settings and calibration
 
-Tunable at runtime from the config portal (saved to NVS — no reflash): battery
-capacity & usable %, BME temp offset, day-planner hours. Compile-time defaults and
-thresholds are in `config.h`.
+You can change these from the settings page while hiking, with no reflash. They
+are saved on the device: battery size and usable percentage, the BME
+temperature correction, and your daily pace. Fixed defaults live in `config.h`.
 
-Calibration checklist:
-1. **Battery** — set `BAT_DIVIDER_RATIO` to your divider; refine `batteryPctFromVoltage` LUT against the real pack.
-2. **BME temp offset** — compare to a reference thermometer after warm-up; set in the portal.
-3. **Compass** — do a hard/soft-iron calibration **in the assembled case** (routine TBD).
-4. **e-paper** — if your panel revision differs, switch `EPD_USE_T94` (GxEPD2_290_T94 ↔ _290_BS).
+**Calibration steps**
 
-### VERIFY checklist (before first real assembly)
-- [ ] Pin map matches the FireBeetle silk (all rows above)
-- [ ] GPS MOSFET polarity (`GPS_PWR_ACTIVE_LEVEL`)
-- [ ] Battery divider ratio
-- [ ] BME temperature offset
-- [ ] e-paper driver class (T94 vs BS)
-- [ ] GPIO4 is RTC-capable on your board (ext0 wake)
+1. **Battery** — set `BAT_DIVIDER_RATIO` to match your two resistors, then tune
+   the battery-percentage curve against your real pack.
+2. **Temperature** — compare the reading to a real thermometer after the board
+   warms up, then set the offset in the settings page.
+3. **Compass** — calibrate it inside the finished case.
+4. **Screen** — if your panel behaves oddly, switch the driver with
+   `EPD_USE_T94`.
+
+**Check before you build the final version**
+
+- [ ] The pins match your board's printed labels
+- [ ] The GPS power switch turns the right way (`GPS_PWR_ACTIVE_LEVEL`)
+- [ ] The battery divider ratio is right
+- [ ] The temperature offset is set
+- [ ] The e-paper driver matches your panel
+- [ ] GPIO4 can wake the board from sleep
 
 ---
 
 ## Status
 
-Firmware and portal are written and compile for the ESP32 target; the bare board
-flashes and runs (smoke + Wi-Fi portal verified on hardware). Sensors, GPS, and the
-e-paper are **not yet wired/tested** — those `VERIFY` items and on-trail calibration
-remain. The Nikkaluokta→Kebnekaise→Singi approach is fully navigable (the nav snaps
-to whichever of the two polylines is nearest).
+The firmware and settings page are written and build for the ESP32.
+
+What works on real hardware: the board flashes and runs, the smoke and Wi-Fi
+test builds pass, and the **e-paper screen draws correctly** (pin map confirmed
+for the DFR1139). The Nikkaluokta → Kebnekaise → Singi approach is fully
+navigable; the device snaps to whichever trail is nearest.
+
+What's left: wire and test the sensors and the GPS, then calibrate on the trail.
