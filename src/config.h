@@ -57,7 +57,7 @@
 #define GPS_FIX_TIMEOUT_MS   45000UL
 #define GPS_HDOP_GATE        300       // TinyGPS hdop is value*100; 3.0 -> 300
 #define LONG_PRESS_MS        2000UL    // hold at wake -> config mode
-#define WAYPOINT_ARRIVE_M    30.0f
+#define WAYPOINT_ARRIVE_M    55.0f     // above typical GPS noise (NEO-6M ~5-40 m)
 #define ASCENT_DEADBAND_M    1.5f
 #define ALT_FILTER_ALPHA     0.02f     // GPS->QNH steering rate (good fix only)
 #define WAKE_TIMER_S         0         // 0 = button-only wake (no RTC drift budget)

@@ -6,6 +6,15 @@
 
 static TinyGPSPlus tinygps;
 
+// UBX-CFG-SBAS: enable SBAS (EGNOS over Europe) with ranging + differential
+// corrections, 3 channels, auto-scan PRNs. Sent each wake because the module is
+// power-cycled between fixes, so the setting isn't relied on to persist.
+// Bytes: hdr B5 62, class/id 06 16, len 0008, payload, checksum 2B B9.
+static const uint8_t UBX_CFG_SBAS[] = {
+    0xB5, 0x62, 0x06, 0x16, 0x08, 0x00,
+    0x01, 0x03, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2B, 0xB9
+};
+
 void gpsPower(bool on) {
     gpio_hold_dis((gpio_num_t)PIN_GPS_PWR);    // release any deep-sleep hold first
     pinMode(PIN_GPS_PWR, OUTPUT);
@@ -19,6 +28,8 @@ GpsFix gpsAcquireFix(uint32_t timeoutMs, int hdopGate) {
 
     gpsPower(true);
     Serial1.begin(GPS_BAUD, SERIAL_8N1, PIN_GPS_RX, PIN_GPS_TX);
+    delay(100);                                    // let the module's UART come up
+    Serial1.write(UBX_CFG_SBAS, sizeof(UBX_CFG_SBAS));
 
     while (millis() - t0 < timeoutMs) {
         while (Serial1.available()) tinygps.encode(Serial1.read());
