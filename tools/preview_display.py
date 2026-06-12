@@ -23,6 +23,7 @@ def font(name, size):
 F_TINY = font("arial.ttf", 8)
 F_SM = font("arial.ttf", 10)
 F_MD = font("arial.ttf", 12)
+F_MDB = font("arialbd.ttf", 12)
 F_BD = font("arialbd.ttf", 13)
 F_HUGE = font("arialbd.ttf", 20)
 
@@ -35,6 +36,12 @@ class Epd:
     # --- GxEPD2-like primitives ---
     def line(self, x0, y0, x1, y1, c=BLACK):
         self.d.line((x0, y0, x1, y1), fill=c)
+    def line2(self, x0, y0, x1, y1, c=BLACK):
+        self.d.line((x0, y0, x1, y1), fill=c)
+        if abs(x1 - x0) >= abs(y1 - y0):
+            self.d.line((x0, y0 + 1, x1, y1 + 1), fill=c)
+        else:
+            self.d.line((x0 + 1, y0, x1 + 1, y1), fill=c)
     def hline(self, x, y, w, c=BLACK):
         self.d.line((x, y, x + w - 1, y), fill=c)
     def rect(self, x, y, w, h, c=BLACK):
@@ -274,7 +281,7 @@ def render_map(e, vm):
         if px is not None:
             seg = _clip(px, py, mx, my, cl, ct, cr, cb)
             if seg:
-                e.line(round(seg[0]), round(seg[1]), round(seg[2]), round(seg[3]))
+                e.line2(round(seg[0]), round(seg[1]), round(seg[2]), round(seg[3]))
         px, py = mx, my
         if hut and cl <= mx <= cr and ct <= my <= cb:
             e.fillrect(mx - 2, my - 2, 5, 5)
@@ -282,7 +289,7 @@ def render_map(e, vm):
     dE, dN = vm["dest"]
     dx = cx + round(dE * scale); dy = cy - round(dN * scale)
     if x0 < dx < x0 + w and y0 < dy < y0 + h:
-        e.circle(dx, dy, 4); e.fillcircle(dx, dy, 2)
+        e.circle(dx, dy, 6); e.circle(dx, dy, 5); e.fillcircle(dx, dy, 3)
     else:
         a = math.atan2(dE, dN)
         tx, ty = polar(cx, cy, a / D2R, halfPx)
@@ -291,9 +298,9 @@ def render_map(e, vm):
         rx, ry = polar(cx, cy, a / D2R - 145, 6)
         e.tri(tx, ty, ax + (lx - cx), ay + (ly - cy), ax + (rx - cx), ay + (ry - cy))
 
-    tx, ty = polar(cx, cy, vm["heading"], 7)
-    blx, bly = polar(cx, cy, vm["heading"] + 130, 6)
-    brx, bry = polar(cx, cy, vm["heading"] - 130, 6)
+    tx, ty = polar(cx, cy, vm["heading"], 11)
+    blx, bly = polar(cx, cy, vm["heading"] + 132, 9)
+    brx, bry = polar(cx, cy, vm["heading"] - 132, 9)
     e.tri(tx, ty, blx, bly, brx, bry)
 
     e.tri(x0 + 7, y0 + 4, x0 + 4, y0 + 10, x0 + 10, y0 + 10)
@@ -311,17 +318,17 @@ def render_map(e, vm):
 
     xs = x0 + w + 6
     e.line(x0 + w + 3, y0, x0 + w + 3, H - 1)
-    e.text(xs, 28, vm["stop"], F_SM)
+    e.text(xs, 28, vm["stop"], F_MDB)
     if vm["km"] < 1:
         num, unit = "%.0f" % (vm["km"] * 1000), "m"
     else:
         num, unit = "%.1f" % vm["km"], "km"
     e.text(xs, 51, num, F_BD)
-    e.text(xs + int(e.width(num, F_BD)) + 3, 51, unit, F_SM)
+    e.text(xs + int(e.width(num, F_BD)) + 3, 51, unit, F_MDB)
     e.hline(xs, 58, W - xs - 2)
-    e.text(xs, 78, "ETA %d:%02d" % (vm["eta"] // 60, vm["eta"] % 60), F_SM)
-    e.text(xs, 98, "climb %.0fm" % vm["climb"], F_SM)
-    e.text(xs, 118, "alt %.0fm" % vm["alt"], F_SM)
+    e.text(xs, 78, "ETA %d:%02d" % (vm["eta"] // 60, vm["eta"] % 60), F_MDB)
+    e.text(xs, 98, "climb %.0fm" % vm["climb"], F_MDB)
+    e.text(xs, 118, "alt %.0fm" % vm["alt"], F_MDB)
 
 
 def save(e, name):
