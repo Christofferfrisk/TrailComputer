@@ -67,7 +67,7 @@
 
 // RTC/NVS state validity. Bump the low byte whenever PersistentState's layout
 // changes so stale RTC memory from an older firmware is rejected.
-#define STATE_MAGIC          0xC0FFEE07u
+#define STATE_MAGIC          0xC0FFEE08u
 
 // Route snap: search this many segments around the last known position; if the
 // best match is farther off-route than this, fall back to a global search.

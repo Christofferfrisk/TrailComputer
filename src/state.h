@@ -51,6 +51,8 @@ struct PersistentState {
     float    consumedMah;
 
     float    pressHist[12];        // rolling QNH samples, oldest..newest
+    float    tempHist[12];         // rolling temperature samples (deg C), same index as pressHist
+    float    humHist[12];          // rolling humidity samples (%RH), same index as pressHist
     uint8_t  pressHistN;
 
     int32_t  lastSegStart;         // route snap hint from last fix (-1 = unknown)

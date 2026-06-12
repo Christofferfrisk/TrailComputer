@@ -31,6 +31,8 @@ struct ViewModel {
 
     // weather strip
     float   pressureHpa;       // QNH
+    float   temperatureC;      // BME280, offset-corrected
+    float   humidityPct;       // BME280 relative humidity
     bool    weatherTurning;    // falling
     int     pressureTrend;     // -1 falling, 0 steady, +1 rising
     const float* sparkline;    // pressure samples, oldest..newest

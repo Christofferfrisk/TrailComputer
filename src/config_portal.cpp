@@ -244,6 +244,50 @@ static void appendProfile(String& h) {
     h += F("</svg></section>");
 }
 
+// A small line chart of a rolling history array (oldest..newest, left..right).
+static void historyChart(String& h, const char* label, const float* data, int n,
+                         int dec, const char* unit, const char* color) {
+    h += "<p class='prog' style='margin:8px 0 4px'><b>";
+    h += label;
+    h += "</b>";
+    if (n >= 1) { h += " &middot; now " + String(data[n - 1], dec) + unit; }
+    h += "</p>";
+    if (n < 2) { h += F("<p class='muted'>Collecting samples&hellip;</p>"); return; }
+
+    float lo = data[0], hi = data[0];
+    for (int i = 1; i < n; i++) { if (data[i] < lo) lo = data[i]; if (data[i] > hi) hi = data[i]; }
+    if (hi - lo < 1.0f) { float m = (hi + lo) / 2; lo = m - 0.5f; hi = m + 0.5f; }
+
+    const float pL = 36, pR = 8, pT = 8, pB = 8;
+    const float plotW = 520 - pL - pR, plotH = 120 - pT - pB, base = 120 - pB;
+    String pts;
+    for (int i = 0; i < n; i++) {
+        float x = pL + (float)i / (n - 1) * plotW;
+        float y = pT + (1.0f - (data[i] - lo) / (hi - lo)) * plotH;
+        pts += String(x, 1) + "," + String(y, 1) + " ";
+    }
+    float lx = pL + plotW, ly = pT + (1.0f - (data[n - 1] - lo) / (hi - lo)) * plotH;
+
+    h += F("<svg viewBox='0 0 520 120' style='width:100%;height:auto;display:block'>");
+    h += "<line x1='" + String(pL, 1) + "' y1='" + String(base, 1) + "' x2='" +
+         String(pL + plotW, 1) + "' y2='" + String(base, 1) + "' stroke='#c7ccd2'/>";
+    h += "<polyline points='" + pts + "' fill='none' stroke='" + color + "' stroke-width='1.6'/>";
+    h += "<circle cx='" + String(lx, 1) + "' cy='" + String(ly, 1) + "' r='2.6' fill='" + color + "'/>";
+    h += "<text x='2' y='" + String(pT + 7, 1) + "' font-size='9' fill='#697483'>" +
+         String(hi, dec) + unit + "</text>";
+    h += "<text x='2' y='" + String(base, 1) + "' font-size='9' fill='#697483'>" +
+         String(lo, dec) + unit + "</text>";
+    h += F("</svg>");
+}
+
+static void appendConditions(String& h) {
+    int n = g_state->pressHistN;
+    h += F("<section class='card'><h2>Conditions</h2>");
+    historyChart(h, "Temperature", g_state->tempHist, n, 1, "&deg;C", "#c0392b");
+    historyChart(h, "Humidity",    g_state->humHist,  n, 0, "%",      "#3d6a8a");
+    h += F("</section>");
+}
+
 static void appendSetPos(String& h) {
     h += F("<section class='card'><h2>Test a position</h2>"
            "<form class='row' action='/setpos'>"
@@ -596,6 +640,7 @@ static void sendHome() {
     appendHike(h);
     appendPlanner(h);
     appendProfile(h);
+    appendConditions(h);
     appendDestinations(h);
     appendHistory(h);
     appendSettings(h);

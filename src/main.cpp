@@ -70,13 +70,19 @@ static int hikeEndRouteIdx() {
     return (c >= 0 && c < 1000) ? ROUTE_HUTS[c] : -1;
 }
 
-static void pushPressure(float qnh) {
-    if (g_state->pressHistN < 12) {
-        g_state->pressHist[g_state->pressHistN++] = qnh;
-    } else {
-        for (int i = 1; i < 12; i++) g_state->pressHist[i - 1] = g_state->pressHist[i];
-        g_state->pressHist[11] = qnh;
+static void pushSample(float qnh, float tempC, float humPct) {
+    if (g_state->pressHistN >= 12) {
+        for (int i = 1; i < 12; i++) {
+            g_state->pressHist[i - 1] = g_state->pressHist[i];
+            g_state->tempHist[i - 1]  = g_state->tempHist[i];
+            g_state->humHist[i - 1]   = g_state->humHist[i];
+        }
+        g_state->pressHistN = 11;
     }
+    int i = g_state->pressHistN++;
+    g_state->pressHist[i] = qnh;
+    g_state->tempHist[i]  = tempC;
+    g_state->humHist[i]   = humPct;
 }
 
 #if SIM_MODE
@@ -209,7 +215,7 @@ static ScreenState computeNavCycle(ViewModel& vm, uint32_t& gpsMs) {
             accumulateClimb(altM, g_state->lastAltitudeM,
                             g_state->cumAscentM, g_state->cumDescentM);
 
-        pushPressure(g_state->seaLevelPressureRef);
+        pushSample(g_state->seaLevelPressureRef, bme.tempC, bme.humPct);
     }
 
     // Weather from the rolling QNH window, not a single step.
@@ -220,6 +226,8 @@ static ScreenState computeNavCycle(ViewModel& vm, uint32_t& gpsMs) {
     vm.satCount   = fix.sats;
     vm.satsInView = fix.sats;
     vm.pressureHpa     = g_state->seaLevelPressureRef;
+    vm.temperatureC    = bme.tempC;
+    vm.humidityPct     = bme.humPct;
     vm.weatherTurning  = weatherTurning;
     vm.pressureTrend   = trend < -0.3f ? -1 : (trend > 0.3f ? 1 : 0);
     vm.cumAscentM      = g_state->cumAscentM;

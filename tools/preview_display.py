@@ -168,15 +168,16 @@ def sparkline(e, vm, x, y, w, h):
 def weather(e, vm, top):
     e.hline(0, top, W)
     buf = "%.0f hPa" % vm["press"]
-    e.text(2, top + 16, buf, F_MD)
-    trend(e, int(e.width(buf, F_MD)) + 12, top + 12, vm["trend"])
+    e.text(2, top + 13, buf, F_MD)
+    trend(e, int(e.width(buf, F_MD)) + 10, top + 9, vm["trend"])
+    e.text(2, top + 26, "%.0f°C  %.0f%%" % (vm["temp"], vm["hum"]), F_SM)
+    rxs, rw = 150, W - 150 - 2
     if vm["turning"]:
-        cw, ch, cx, cy = 96, 16, 84, top + 4
-        e.roundrect(cx, cy, cw, ch, 3)
-        e.textC(cx + cw // 2, cy + 12, "Weather turning", F_SM, inv=True)
-        sparkline(e, vm, W - 100, top + 4, 96, 18)
+        e.roundrect(rxs, top + 3, rw, 14, 3)
+        e.textC(rxs + rw // 2, top + 13, "Weather turning", F_SM, inv=True)
+        sparkline(e, vm, rxs, top + 19, rw, 8)
     else:
-        sparkline(e, vm, 96, top + 4, W - 100, 18)
+        sparkline(e, vm, rxs, top + 5, rw, 20)
 
 
 def draw_tile(e, cx, yl, yv, label, value):
@@ -348,7 +349,7 @@ def save(e, name):
 def main():
     vm = dict(clock="13:42", daylight=380, sats=9, batt=78, stop="Tjäktja",
               km=8.4, heading=20, bearing=65, climb=240, eta=155, alt=712,
-              press=1009, turning=True, trend=-1, asc=1234, desc=1180,
+              press=1009, temp=14, hum=46, turning=True, trend=-1, asc=1234, desc=1180,
               mah=1480, checks=38, low=False,
               spark=[1011, 1011.5, 1012, 1011.2, 1010.4, 1009.8, 1009.1])
 

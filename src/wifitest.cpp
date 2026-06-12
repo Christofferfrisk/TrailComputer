@@ -35,6 +35,17 @@ void setup() {
     g_state->tripDays[1] = {6, 10, 150, 480};
     g_state->tripDays[2] = {6, 11, 130, 540};
 
+    // Seed pressure/temperature/humidity history so the Conditions card draws.
+    const float sp[8] = {1012, 1011.6f, 1011, 1010.2f, 1009.5f, 1009, 1008.6f, 1009};
+    const float st[8] = {12, 12.5f, 13.2f, 14.1f, 15, 14.4f, 13.6f, 14};
+    const float sh[8] = {52, 50, 47, 45, 44, 46, 48, 46};
+    g_state->pressHistN = 8;
+    for (int i = 0; i < 8; i++) {
+        g_state->pressHist[i] = sp[i];
+        g_state->tempHist[i]  = st[i];
+        g_state->humHist[i]   = sh[i];
+    }
+
     Serial.println("Join Wi-Fi SSID: TrailComputer  (open network)");
     Serial.println("Then browse to: http://192.168.4.1");
     Serial.println("Portal stays up 10 min of inactivity; resets on each click.");

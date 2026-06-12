@@ -164,17 +164,22 @@ static void drawWeather(const ViewModel& vm, int top) {
     char buf[24];
     epd.drawFastHLine(0, top, EPD_WIDTH, GxEPD_BLACK);
 
+    // left column, two rows: pressure + trend, then temperature + humidity
     snprintf(buf, sizeof(buf), "%.0f hPa", vm.pressureHpa);
-    text(2, top + 16, buf, F_MD);
-    drawTrend(textW(buf, F_MD) + 12, top + 12, vm.pressureTrend);
+    text(2, top + 13, buf, F_MD);
+    drawTrend(textW(buf, F_MD) + 10, top + 9, vm.pressureTrend);
 
+    snprintf(buf, sizeof(buf), "%.0f\xC2\xB0""C  %.0f%%", vm.temperatureC, vm.humidityPct);
+    text(2, top + 26, buf, F_SM);
+
+    // right column: weather-turning chip or a pressure sparkline
+    const int rxs = 150, rw = EPD_WIDTH - rxs - 2;
     if (vm.weatherTurning) {
-        int cw = 96, ch = 16, cx = 84, cy = top + 4;
-        epd.fillRoundRect(cx, cy, cw, ch, 3, GxEPD_BLACK);
-        textC(cx + cw / 2, cy + 12, "Weather turning", F_SM, true);
-        drawSparkline(vm, EPD_WIDTH - 100, top + 4, 96, 18);
+        epd.fillRoundRect(rxs, top + 3, rw, 14, 3, GxEPD_BLACK);
+        textC(rxs + rw / 2, top + 13, "Weather turning", F_SM, true);
+        drawSparkline(vm, rxs, top + 19, rw, 8);
     } else {
-        drawSparkline(vm, 96, top + 4, EPD_WIDTH - 100, 18);
+        drawSparkline(vm, rxs, top + 5, rw, 20);
     }
 }
 
