@@ -127,7 +127,7 @@ function computeNow() {
 }
 
 // --- rendering: Now ---------------------------------------------------------
-function ring(frac) {
+function ring(frac, label) {
   const C = 289, off = C * (1 - Math.max(0, Math.min(1, frac)));
   return `<svg class="dial" viewBox="0 0 110 110">
     <circle cx="55" cy="55" r="46" fill="none" stroke="#e3e7ec" stroke-width="9"/>
@@ -135,34 +135,54 @@ function ring(frac) {
       stroke-linecap="round" transform="rotate(-90 55 55)"
       stroke-dasharray="${C}" stroke-dashoffset="${off.toFixed(1)}"/>
     <text x="55" y="52" class="ringpct">${Math.round(frac * 100)}%</text>
-    <text x="55" y="70" class="ringlbl">of hike</text></svg>`;
+    <text x="55" y="70" class="ringlbl">${label}</text></svg>`;
 }
-// Schematic north-up map of nearby route points + you.
-function miniMap(n) {
-  if (!pos || !n.snap) return '';
-  const poly = D.route, seg = n.snap.seg, span = 40;
-  const lo = Math.max(0, seg - span), hi = Math.min(poly.length - 1, seg + span);
-  const kx = 111320 * Math.cos(pos.lat * D2R), ky = 110540;
-  const P = [];
-  for (let i = lo; i <= hi; i++) P.push([(poly[i][1] - pos.lon) * kx, (poly[i][0] - pos.lat) * ky]);
-  let R = 200;
-  P.forEach(p => R = Math.max(R, Math.abs(p[0]), Math.abs(p[1])));
-  const W = 320, H = 240, sc = (Math.min(W, H) / 2 - 16) / R;
-  const X = e => (W / 2 + e[0] * sc).toFixed(1), Y = e => (H / 2 - e[1] * sc).toFixed(1);
-  let pts = P.map(p => `${X(p)},${Y(p)}`).join(' ');
-  let huts = '';
-  for (let k = 0; k < D.huts.length; k++) {
-    const hi2 = D.huts[k];
-    if (hi2 < lo || hi2 > hi) continue;
-    const e = [(poly[hi2][1] - pos.lon) * kx, (poly[hi2][0] - pos.lat) * ky];
-    huts += `<rect x="${X(e) - 3}" y="${Y(e) - 3}" width="6" height="6" fill="#1b2430"/>
-      <text x="${X(e)}" y="${(+Y(e) - 6)}" font-size="9" fill="#444" text-anchor="middle">${D.hutNames[k]}</text>`;
+// Schematic north-up map of the whole trip (hike section + spur approach) + you.
+function tripMap() {
+  const [sSlot, eSlot] = hikeBounds();
+  const startMain = hikeActive() ? mainSlotOfCode(S.start) : sSlot;   // include the junction hut
+  const spurTrip = hikeActive() && S.start >= 1000;
+  const i0 = D.huts[startMain], i1 = D.huts[eSlot];
+
+  const all = [];
+  if (spurTrip) D.spur.route.forEach(p => all.push([p[0], p[1]]));
+  for (let i = i0; i <= i1; i++) all.push([D.route[i][0], D.route[i][1]]);
+  if (pos) all.push([pos.lat, pos.lon]);
+  let laMin = 1e9, laMax = -1e9, loMin = 1e9, loMax = -1e9;
+  all.forEach(p => { laMin = Math.min(laMin, p[0]); laMax = Math.max(laMax, p[0]); loMin = Math.min(loMin, p[1]); loMax = Math.max(loMax, p[1]); });
+
+  const midLa = (laMin + laMax) / 2, coslat = Math.cos(midLa * D2R);
+  const W = 320, H = 320, pad = 20;
+  const spanLo = (loMax - loMin) * coslat || 1e-6, spanLa = (laMax - laMin) || 1e-6;
+  const sc = Math.min((W - 2 * pad) / spanLo, (H - 2 * pad) / spanLa);
+  const offX = (W - spanLo * sc) / 2, offY = (H - spanLa * sc) / 2;
+  const X = (la, lo) => (offX + (lo - loMin) * coslat * sc).toFixed(1);
+  const Y = (la, lo) => (offY + (laMax - la) * sc).toFixed(1);
+
+  let svg = '';
+  if (spurTrip) {
+    const sp = D.spur.route.map(p => `${X(p[0], p[1])},${Y(p[0], p[1])}`).join(' ');
+    svg += `<polyline points="${sp}" fill="none" stroke="#2e7d4f" stroke-width="2.5" stroke-dasharray="5 3"/>`;
   }
-  return `<svg class="mapbox" viewBox="0 0 ${W} ${H}">
-    <polyline points="${pts}" fill="none" stroke="#2e7d4f" stroke-width="3"/>
-    ${huts}
-    <circle cx="${W / 2}" cy="${H / 2}" r="6" fill="#c0392b"/>
-    <circle cx="${W / 2}" cy="${H / 2}" r="10" fill="none" stroke="#c0392b" stroke-width="2"/>
+  let mn = '';
+  for (let i = i0; i <= i1; i++) mn += `${X(D.route[i][0], D.route[i][1])},${Y(D.route[i][0], D.route[i][1])} `;
+  svg += `<polyline points="${mn}" fill="none" stroke="#2e7d4f" stroke-width="3"/>`;
+
+  let huts = '';
+  for (let k = startMain; k <= eSlot; k++) {
+    const hi = D.huts[k], x = X(D.route[hi][0], D.route[hi][1]), y = Y(D.route[hi][0], D.route[hi][1]);
+    huts += `<rect x="${x - 3}" y="${y - 3}" width="6" height="6" fill="#1b2430"/>
+      <text x="${+x + 6}" y="${+y + 3}" font-size="9" fill="#444">${D.hutNames[k]}</text>`;
+  }
+  if (spurTrip) D.spur.stops.forEach(s => {
+    const x = X(s.lat, s.lon), y = Y(s.lat, s.lon);
+    huts += `<rect x="${x - 3}" y="${y - 3}" width="6" height="6" fill="#3d6a8a"/>
+      <text x="${+x + 6}" y="${+y + 3}" font-size="9" fill="#3d6a8a">${s.name}</text>`;
+  });
+
+  const you = pos ? `<circle cx="${X(pos.lat, pos.lon)}" cy="${Y(pos.lat, pos.lon)}" r="6" fill="#c0392b"/>
+    <circle cx="${X(pos.lat, pos.lon)}" cy="${Y(pos.lat, pos.lon)}" r="10" fill="none" stroke="#c0392b" stroke-width="2"/>` : '';
+  return `<svg class="mapbox" viewBox="0 0 ${W} ${H}">${svg}${huts}${you}
     <text x="10" y="16" font-size="11" font-weight="700" fill="#1b2430">▲N</text></svg>`;
 }
 function wireRefresh() { const b = document.getElementById('refresh'); if (b) b.onclick = () => getFix(true); }
@@ -171,7 +191,7 @@ function renderNow() {
   if (!n.hasFix) {
     const msg = locating ? 'Locating…' : 'No position yet';
     const sub = locating ? 'reading GPS — may take a moment' : 'tap below to get your position';
-    el.innerHTML = `<div class="card"><div class="hero">${ring(0)}
+    el.innerHTML = `<div class="card"><div class="hero">${ring(0, 'of leg')}
       <div class="heronum"><div class="dist" style="font-size:24px">${msg}</div>
       <div class="sub">${sub}</div></div></div>
       <button class="btn" id="refresh" style="width:100%"${locating ? ' disabled' : ''}>${locating ? 'Locating…' : '⟳ Get my position'}</button>
@@ -182,15 +202,14 @@ function renderNow() {
   }
   const acc = pos.acc ? `±${Math.round(pos.acc)} m` : '—';
   const spd = pos.spd != null ? `${(pos.spd * 3.6).toFixed(1)} km/h` : '—';
-  let h = `<div class="card"><div class="hero">${ring(n.frac || 0)}
+  let h = `<div class="card"><div class="hero">${ring(n.legFrac || 0, 'of leg')}
     <div class="heronum">
       <div class="dist">${n.remKm.toFixed(1)}<span>km</span></div>
       <div class="sub">to <b>${n.next}</b></div>
       <div class="sub">ETA <b>${fmtETA(n.etaMin)}</b>${n.remAsc ? ` · climb <b>${Math.round(n.remAsc)} m</b>` : ''}</div>
-      ${n.totalKm ? `<div class="sub"><b>${Math.round(n.doneKm)}</b> of ${Math.round(n.totalKm)} km done</div>` : ''}
     </div></div>
-    ${n.legFrac != null ? `<div class="legbar"><i style="width:${Math.round(n.legFrac * 100)}%"></i></div>
-    <div class="sub2"><b>${Math.round(n.legFrac * 100)}%</b> of leg to ${n.next}</div>` : ''}`;
+    ${n.totalKm ? `<div class="legbar"><i style="width:${Math.round((n.frac || 0) * 100)}%"></i></div>
+    <div class="sub2"><b>${Math.round((n.frac || 0) * 100)}%</b> of hike · ${Math.round(n.doneKm)} of ${Math.round(n.totalKm)} km</div>` : ''}`;
   if (n.onSpur) h += `<p class="muted">On the Kebnekaise approach · ${n.approach}.</p>`;
   if (n.off) h += `<div class="warn">⚠ You seem to be more than 150 m off the trail line.</div>`;
   if (n.arrived) h += `<div class="warn" style="background:#e6f2ea;color:#1d5c39">✓ At ${n.next} — end of your section.</div>`;
@@ -198,7 +217,7 @@ function renderNow() {
     <div class="tile"><div class="tv">${n.altM != null ? n.altM : '—'}</div><div class="tl">alt m</div></div>
     <div class="tile"><div class="tv">${spd}</div><div class="tl">speed</div></div>
     <div class="tile"><div class="tv">${acc}</div><div class="tl">GPS acc</div></div>
-  </div>${miniMap(n)}
+  </div>${tripMap()}
   <button class="btn sec" id="refresh" style="width:100%;margin-top:12px"${locating ? ' disabled' : ''}>${locating ? 'Locating…' : '⟳ Update position'}</button>
   <p class="muted">Updated ${agoStr(lastFixMs)} · schematic map (line + huts only) — use a topo app for terrain. GPS is off between checks.</p></div>`;
   el.innerHTML = h;
