@@ -378,8 +378,6 @@ function dayNote(d) {
       h += `<div class="daynote sched"><b>🚌 Catch the ${b.time} ${b.mode} at ${b.hut}</b> — be at the stop by ~${d.beBy}. ${b.label}${tail}.</div>`;
     else
       h += `<div class="daynote sched"><b>🕗 Start by ~${d.startSug}</b> — ~${b.walkLo}–${b.walkHi} h to ${b.hut} for the ${b.time} ${b.mode}. ${b.label}${tail}.</div>`;
-  } else {
-    h += `<div class="daynote"><b>🕗 Start ~${d.startSug}</b> · reach ${d.to} ~${d.arrive}.</div>`;
   }
   if (d.walkBoat)
     h += `<div class="daynote sched">⚓ A boat crossing this day runs to a timetable — confirm the departure the evening before.</div>`;
@@ -405,7 +403,7 @@ function renderPlan() {
       <div class="daym"><span class="m">${Math.round(d.km)} km</span><span class="m">~${Math.round(d.hrs)} h</span>
       ${d.boat ? '<span class="m bt">⚓ boat</span>' : ''}</div>${dayNote(d)}</div></div>`;
   });
-  if (days.length) h += `<p class="muted">${days.length} days at ~${S.dayH} h/day · start times assume an ${DAY_START} start &amp; STF stage figures.</p>`;
+  if (days.length) h += `<p class="muted">${days.length} days at ~${S.dayH} h/day · boat/bus days show a suggested start · STF stage figures.</p>`;
   h += `</div>`;
 
   // elevation
