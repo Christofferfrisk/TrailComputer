@@ -77,7 +77,7 @@ info = {
     "lastLeg": "Skip the 30 km Vakkotavare-Saltoluokta walk: the bus leaves Vakkotavare 14:40 and reaches Kebnats 15:40 (roadtoritsem.com), then the 16:55 M/S Langas boat crosses to Saltoluokta. Boat runs 18 Jun-20 Sep, daily - Saltoluokta->Kebnats 10:00 & 16:30, Kebnats->Saltoluokta 10:25 & 16:55. Miss the 14:40 bus and there is no later connection the same day, so plan the day around it.",
     # Fixed departures the day planner works backwards from. buffer = minutes to be there early.
     "depart": {
-        "Vakkotavare": {"time": "14:40", "mode": "bus", "buffer": 15,
+        "Vakkotavare": {"time": "14:40", "mode": "bus", "buffer": 15, "arrive": "17:10",
                         "label": "Bus to Kebnats (arr 15:40), then the 16:55 M/S Langas boat to Saltoluokta"},
     },
 }

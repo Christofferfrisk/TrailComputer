@@ -279,48 +279,67 @@ function chips(name) {
 function planDays() {
   if (!hikeActive()) return [];
   const [sSlot, eSlot] = hikeBounds();
+  const depart = (D.info && D.info.depart) || {};
   const legs = [];
   let from = codeName(S.start);
   if (S.start >= 1000) {                       // spur approach legs first
     for (let j = S.start - 1000; j >= 0; j--) {
       const s = D.spur.stops[j];
       const to = j > 0 ? D.spur.stops[j - 1].name : D.spur.junction;
-      legs.push({ from, to, km: s.legKm, hrs: parseHrs(s.time) });
+      legs.push({ from, to, km: s.legKm, hrs: parseHrs(s.time), hrsHi: parseHrsHi(s.time), boat: false });
       from = to;
     }
   }
-  for (let k = sSlot + 1; k <= eSlot; k++) {
+  // spur legs end at the junction hut; main walking resumes from there, not sSlot (= junction+1)
+  const startK = S.start >= 1000 ? mainSlotOfCode(S.start) : sSlot;
+  for (let k = startK + 1; k <= eSlot; k++) {
     const st = D.stages[D.hutNames[k]];
     const km = st ? st.km : (cumKm(k) - cumKm(k - 1));
     const asc = ascentBetween(D.huts[k - 1], D.huts[k]);
     const hrs = st ? parseHrs(st.time) : (km / 4.5 + asc / 600);
-    legs.push({ from, to: D.hutNames[k], km, hrs, boat: st && st.boat });
+    const hrsHi = st ? parseHrsHi(st.time) : hrs;
+    const boat = !!(st && st.boat);
+    // "always take the bus": a scheduled leg boarded at its origin is a ride, not a walking day
+    const transit = boat && !!depart[from];
+    legs.push({ from, to: D.hutNames[k], km, hrs, hrsHi, boat, transit });
     from = D.hutNames[k];
   }
-  const depart = (D.info && D.info.depart) || {};
-  const newDay = f => ({ from: f, to: f, km: 0, hrs: 0, boat: false, n: 0, transfer: null });
+  const newDay = f => ({ from: f, to: f, km: 0, hrs: 0, hrsHi: 0, boat: false, walkBoat: false, n: 0, board: null });
   const days = []; let day = null;
   const tgt = S.dayH || 6;
   for (const lg of legs) {
     if (!day) day = newDay(lg.from);
-    else if (day.n > 0 && day.hrs + lg.hrs > tgt) { days.push(day); day = newDay(day.to); }
-    if (depart[lg.from])                        // this leg boards a scheduled bus/boat
-      day.transfer = Object.assign({ hut: lg.from, walkH: day.hrs }, depart[lg.from]);
-    day.km += lg.km; day.hrs += lg.hrs; day.boat = day.boat || lg.boat; day.to = lg.to; day.n++;
+    else if (!lg.transit && day.n > 0 && day.hrs + lg.hrs > tgt) { days.push(day); day = newDay(day.to); }
+    if (lg.transit && depart[lg.from])          // board the bus/boat this day (walking already done)
+      day.board = Object.assign({ stage: 'transfer', hut: lg.from, walkLo: day.hrs, walkHi: day.hrsHi }, depart[lg.from]);
+    day.boat = day.boat || lg.boat; day.to = lg.to; day.n++;
+    if (lg.transit) continue;                   // ride adds no walking distance or time
+    day.km += lg.km; day.hrs += lg.hrs; day.hrsHi += lg.hrsHi;
+    if (lg.boat) day.walkBoat = true;           // a boat on a walking leg (e.g. Teusajaure crossing)
   }
   if (day && day.n > 0) days.push(day);
-  // exiting at a hut that only has a scheduled departure onward
-  const last = days[days.length - 1];
-  if (last && !last.transfer && depart[last.to]) last.exit = Object.assign({ hut: last.to }, depart[last.to]);
+  const last = days[days.length - 1];           // finishing at a hut you bus out from
+  if (last && !last.board && depart[last.to])
+    last.board = Object.assign({ stage: 'exit', hut: last.to, walkLo: last.hrs, walkHi: last.hrsHi }, depart[last.to]);
+  days.forEach(d => {                           // suggested start / arrival for every day
+    if (d.board) {
+      const buf = (d.board.buffer || 15) / 60;
+      if (d.board.walkHi < 0.25) d.beBy = timeMinus(d.board.time, buf);
+      else d.startSug = timeMinus(d.board.time, d.board.walkHi + buf + 0.5);
+    } else {
+      d.startSug = DAY_START;
+      d.arrive = timePlus(DAY_START, d.hrsHi);
+    }
+  });
   return days;
 }
+const DAY_START = '08:00';                       // assumed daily start when no service to catch
 const parseHrs = t => { const m = /(\d+)/.exec(t || ''); return m ? +m[1] : 0; };
-// subtract a duration (hours, fractional) from an "HH:MM" clock time
-function timeMinus(hhmm, hoursFloat) {
-  const [h, m] = hhmm.split(':').map(Number);
-  let t = ((h * 60 + m - Math.round(hoursFloat * 60)) % 1440 + 1440) % 1440;
-  return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0');
-}
+const parseHrsHi = t => { const m = /(\d+)\s*-\s*(\d+)/.exec(t || ''); return m ? +m[2] : parseHrs(t); };
+const toMin = s => { const [h, m] = s.split(':').map(Number); return h * 60 + m; };
+const clock = t => { t = ((t % 1440) + 1440) % 1440; return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); };
+const timeMinus = (hhmm, h) => clock(toMin(hhmm) - Math.round(h * 60));
+const timePlus = (hhmm, h) => clock(toMin(hhmm) + Math.round(h * 60));
 
 function elevProfile() {
   const [sSlot, eSlot] = hikeBounds();
@@ -349,18 +368,22 @@ function elevProfile() {
   </svg>`;
 }
 function dayNote(d) {
-  if (d.transfer) {
-    const t = d.transfer, ic = t.mode === 'bus' ? '🚌' : '⚓', buf = (t.buffer || 15) / 60;
-    if (t.walkH < 0.25)
-      return `<div class="daynote"><b>${ic} Catch the ${t.time} ${t.mode} at ${t.hut}</b> — be there by ~${timeMinus(t.time, buf)}. ${t.label}.</div>`;
-    const startBy = timeMinus(t.time, t.walkH + buf + 0.5);
-    return `<div class="daynote"><b>${ic} Start by ~${startBy}</b> — it's ~${t.walkH} h on to ${t.hut} and the only ${t.mode} leaves ${t.time}. ${t.label}.</div>`;
+  let h = '';
+  if (d.board) {
+    const b = d.board, buf = (b.buffer || 15) / 60;
+    const tail = b.stage === 'transfer' && b.arrive ? `, in ${d.to} ~${b.arrive}` : '';
+    if (b.stage === 'exit')
+      h += `<div class="daynote sched"><b>🕗 Start by ~${d.startSug}</b> — reach ${b.hut} for the ${b.time} bus out (be at the stop by ~${timeMinus(b.time, buf)}).</div>`;
+    else if (d.beBy)
+      h += `<div class="daynote sched"><b>🚌 Catch the ${b.time} ${b.mode} at ${b.hut}</b> — be at the stop by ~${d.beBy}. ${b.label}${tail}.</div>`;
+    else
+      h += `<div class="daynote sched"><b>🕗 Start by ~${d.startSug}</b> — ~${b.walkLo}–${b.walkHi} h to ${b.hut} for the ${b.time} ${b.mode}. ${b.label}${tail}.</div>`;
+  } else {
+    h += `<div class="daynote"><b>🕗 Start ~${d.startSug}</b> · reach ${d.to} ~${d.arrive}.</div>`;
   }
-  if (d.exit)
-    return `<div class="daynote"><b>🚌 Leaving ${d.exit.hut}:</b> catch the ${d.exit.time} ${d.exit.mode} — ${d.exit.label}.</div>`;
-  if (d.boat)
-    return `<div class="daynote">⚓ This day has a boat crossing that runs on a timetable — confirm the departure the evening before.</div>`;
-  return '';
+  if (d.walkBoat)
+    h += `<div class="daynote sched">⚓ A boat crossing this day runs to a timetable — confirm the departure the evening before.</div>`;
+  return h;
 }
 function renderPlan() {
   const [sSlot, eSlot] = hikeBounds();
@@ -382,7 +405,7 @@ function renderPlan() {
       <div class="daym"><span class="m">${Math.round(d.km)} km</span><span class="m">~${Math.round(d.hrs)} h</span>
       ${d.boat ? '<span class="m bt">⚓ boat</span>' : ''}</div>${dayNote(d)}</div></div>`;
   });
-  if (days.length) h += `<p class="muted">${days.length} days at ~${S.dayH} h/day · STF stage figures.</p>`;
+  if (days.length) h += `<p class="muted">${days.length} days at ~${S.dayH} h/day · start times assume an ${DAY_START} start &amp; STF stage figures.</p>`;
   h += `</div>`;
 
   // elevation

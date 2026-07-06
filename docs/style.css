@@ -86,8 +86,10 @@ ul.tl li.spur .node{left:20px;width:13px;height:13px;border-radius:3px;transform
 .daym .m{font-size:11px;color:var(--mut);background:#fff;border:1px solid var(--line);
   border-radius:6px;padding:1px 7px}
 .daym .m.bt{background:#3d6a8a;color:#fff;border-color:#3d6a8a}
-.daynote{margin-top:7px;font-size:12px;line-height:1.4;color:#5a4a1a;background:#fdf3d8;
-  border:1px solid #f0e0a8;border-radius:8px;padding:7px 9px}.daynote b{color:#7a5a10}
+.daynote{margin-top:7px;font-size:12px;line-height:1.4;color:var(--mut);background:#eef2ef;
+  border:1px solid #e0e7e2;border-radius:8px;padding:7px 9px}.daynote b{color:var(--ink)}
+.daynote+.daynote{margin-top:5px}
+.daynote.sched{color:#5a4a1a;background:#fdf3d8;border-color:#f0e0a8}.daynote.sched b{color:#7a5a10}
 .isec{font-size:13px;margin:0 0 10px;color:var(--ink)}.isec:last-child{margin-bottom:0}
 .isec b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--accent2);margin-bottom:2px}
 .toggle{display:flex;align-items:center;gap:10px;font-size:14px}
