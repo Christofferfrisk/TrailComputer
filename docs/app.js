@@ -126,7 +126,9 @@ function computeNow() {
     const toKeb = keb - sp.cum, kebDone = sp.cum >= keb;
     out.next = kebDone ? D.spur.junction : 'Kebnekaise';
     out.remKm = (kebDone ? (end - sp.cum) : toKeb) / 1000;
-    out.etaMin = naismithMin(out.remKm, 0);
+    const tgtIdx = kebDone ? D.spur.route.length - 1 : D.spur.kebIdx;
+    out.remAsc = Math.max(0, D.spur.route[tgtIdx][4] - D.spur.route[sp.seg][4]);
+    out.etaMin = naismithMin(out.remKm, out.remAsc);
     out.doneKm = sp.cum / 1000;
     out.totalKm = tripKm;
     out.frac = out.doneKm / tripKm;
