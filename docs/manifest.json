@@ -1,6 +1,6 @@
 {
-  "name": "Trail Computer — Kungsleden",
-  "short_name": "TrailComp",
+  "name": "Kungsleden Navigator",
+  "short_name": "Kungsleden",
   "description": "Offline Kungsleden navigator: route, huts, day planner, live position.",
   "start_url": ".",
   "scope": ".",

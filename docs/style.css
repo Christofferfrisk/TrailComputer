@@ -86,5 +86,7 @@ ul.tl li.spur .node{left:20px;width:13px;height:13px;border-radius:3px;transform
 .daym .m{font-size:11px;color:var(--mut);background:#fff;border:1px solid var(--line);
   border-radius:6px;padding:1px 7px}
 .daym .m.bt{background:#3d6a8a;color:#fff;border-color:#3d6a8a}
+.isec{font-size:13px;margin:0 0 10px;color:var(--ink)}.isec:last-child{margin-bottom:0}
+.isec b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--accent2);margin-bottom:2px}
 .toggle{display:flex;align-items:center;gap:10px;font-size:14px}
 .toggle input{width:auto}

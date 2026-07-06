@@ -68,10 +68,18 @@ spur_keb_idx = int(m.group(1)) if m else 0
 m = re.search(r"SPURS\[\]\s*=\s*\{\s*\{\s*\"([^\"]+)\",\s*\"([^\"]+)\"", rs)
 after_hut, junction = (m.group(1), m.group(2)) if m else ("Singi", "Singi")
 
+# App-only reference notes (not in the firmware tables). Source: STF trail guide.
+info = {
+    "season": "STF huts are staffed roughly late June to mid-September. Outside that they are closed or unstaffed. Reserve a Saltoluokta dinner and the Vakkotavare-Kebnats bus ahead in high season.",
+    "emergency": "In an emergency call 112 and ask for Fjallraddningen (mountain rescue). Give the nearest hut or a lake/peak name. Reception is patchy - a satellite messenger is the reliable option.",
+    "marking": "Summer route is marked with cairns and red-painted poles; winter with red crosses. Boats cross Teusajaure and the Kebnats sound (Saltoluokta) - both run on a timetable, not on demand.",
+    "boatShortcut": "Nikkaluokta start: a boat across Laddjujavri runs several times a day and cuts about 6 km off the 19 km leg to Kebnekaise.",
+}
+
 data = {
     "route": route, "huts": huts, "hutNames": hut_names,
     "stages": stages, "stores": stores, "sauna": sauna, "station": station,
-    "transport": transport,
+    "transport": transport, "info": info,
     "spur": {"route": spur_route, "kebIdx": spur_keb_idx, "stops": keb_stops,
              "afterHut": after_hut, "junction": junction},
 }
