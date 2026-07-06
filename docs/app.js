@@ -403,9 +403,11 @@ function renderPlan() {
     </div>`;
   if (!days.length) h += `<p class="muted">Set a Start &amp; End to plan daily stages.</p>`;
   days.forEach((d, i) => {
+    const hLo = Math.round(d.hrs), hHi = Math.round(d.hrsHi);
+    const hTxt = hHi > hLo ? `${hLo}–${hHi} h` : `~${hLo} h`;
     h += `<div class="day"><div class="daynum">${i + 1}</div><div class="dayb">
       <div class="dayr"><b>${d.from}</b> → <b>${d.to}</b></div>
-      <div class="daym"><span class="m">${Math.round(d.km)} km</span><span class="m">~${Math.round(d.hrs)} h</span>
+      <div class="daym"><span class="m">${Math.round(d.km)} km</span><span class="m">${hTxt}</span>
       ${d.boat ? '<span class="m bt">⚓ boat</span>' : ''}</div>${dayNote(d)}</div></div>`;
   });
   if (days.length) h += `<p class="muted">${days.length} days at ~${S.dayH} h/day${S.dayFlex ? ` (up to ~${S.dayH + S.dayFlex} h)` : ''} · boat/bus days show a suggested start · STF stage figures.</p>`;
