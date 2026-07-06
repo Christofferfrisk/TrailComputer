@@ -3,7 +3,7 @@ const D = window.TC_DATA;
 const R2D = 180 / Math.PI, D2R = Math.PI / 180;
 
 // --- persisted settings -----------------------------------------------------
-const S = Object.assign({ start: -1, end: -1, dayH: 6, awake: false },
+const S = Object.assign({ start: -1, end: -1, dayH: 6, awake: false, sim: false, simF: 0 },
   JSON.parse(localStorage.getItem('tc') || '{}'));
 const save = () => localStorage.setItem('tc', JSON.stringify(S));
 
@@ -81,8 +81,38 @@ function agoStr(ms) {
   return Math.round(s / 3600) + ' h ago';
 }
 
+// --- simulation (bench testing off the trail) -------------------------------
+function tripPolyline() {
+  const [sSlot, eSlot] = hikeBounds();
+  const startMain = hikeActive() ? mainSlotOfCode(S.start) : sSlot;
+  const pts = [];
+  if (hikeActive() && S.start >= 1000) D.spur.route.forEach(p => pts.push([p[0], p[1]]));
+  for (let i = D.huts[startMain]; i <= D.huts[eSlot]; i++) pts.push([D.route[i][0], D.route[i][1]]);
+  return pts;
+}
+function simPoint(f) {
+  const pts = tripPolyline(), cum = [0];
+  for (let i = 1; i < pts.length; i++)
+    cum.push(cum[i - 1] + haversineM(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]));
+  const target = f * cum[cum.length - 1];
+  let i = 1; while (i < cum.length && cum[i] < target) i++;
+  if (i >= pts.length) return pts[pts.length - 1];
+  const t = (target - cum[i - 1]) / Math.max(1, cum[i] - cum[i - 1]);
+  return [pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * t, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * t];
+}
+function applySim() {
+  const p = simPoint(S.simF);
+  pos = { lat: p[0], lon: p[1], acc: 8, spd: 1.2 };
+  lastFixMs = Date.now();
+  setGps('ok', 'sim ' + Math.round(S.simF * 100) + '%');
+  renderNow();
+}
+
 function computeNow() {
   const [sSlot, eSlot] = hikeBounds();
+  const startMain = hikeActive() ? mainSlotOfCode(S.start) : sSlot;   // Singi for a spur start
+  const spurTotalKm = (hikeActive() && S.start >= 1000) ? D.spur.route[D.spur.route.length - 1][2] / 1000 : 0;
+  const tripKm = Math.max(0.1, spurTotalKm + (cumKm(eSlot) - cumKm(startMain)));
   const out = { hasFix: !!pos, off: false, onSpur: false };
   if (!pos) return out;
 
@@ -97,9 +127,10 @@ function computeNow() {
     out.next = kebDone ? D.spur.junction : 'Kebnekaise';
     out.remKm = (kebDone ? (end - sp.cum) : toKeb) / 1000;
     out.etaMin = naismithMin(out.remKm, 0);
-    out.frac = 0; out.doneKm = 0;
+    out.doneKm = sp.cum / 1000;
+    out.totalKm = tripKm;
+    out.frac = out.doneKm / tripKm;
     out.legFrac = kebDone ? (end > keb ? (sp.cum - keb) / (end - keb) : 1) : (keb > 0 ? sp.cum / keb : 0);
-    out.totalKm = (end / 1000) + (cumKm(eSlot) - cumKm(sSlot));
     out.approach = `${(sp.cum / 1000).toFixed(1)} km from Nikkaluokta`;
     return out;
   }
@@ -118,10 +149,9 @@ function computeNow() {
   out.altM = Math.round(D.route[sm.seg][3]);
   out.arrived = out.remKm < 0.06 && ns === eSlot;
 
-  const c0 = cumKm(sSlot), c1 = cumKm(eSlot);
-  out.totalKm = Math.max(0.1, c1 - c0);
-  out.doneKm = Math.max(0, Math.min(out.totalKm, cur - c0));
-  out.frac = out.doneKm / out.totalKm;
+  out.doneKm = Math.max(0, Math.min(tripKm, spurTotalKm + (cur - cumKm(startMain))));
+  out.totalKm = tripKm;
+  out.frac = out.doneKm / tripKm;
   out.snap = sm;
   return out;
 }
@@ -370,8 +400,29 @@ function renderInfo() {
     compass, and a satellite messenger.</p>
     <p class="muted">Map detail: this app draws a schematic line only. For terrain, use a topo
     app (Fjällkartan / Lantmäteriet, Topo GPS, OsmAnd) with the region downloaded.</p></div>
+  <div class="card"><h2><span class="ic">🧪</span>Test mode</h2>
+    <label class="toggle"><input type="checkbox" id="sim" ${S.sim ? 'checked' : ''}>
+    Simulate a position on the route</label>
+    <div id="simctl" style="${S.sim ? '' : 'display:none'};margin-top:10px">
+      <label>Drag along the trip · <b id="simPct">${Math.round(S.simF * 100)}%</b></label>
+      <input type="range" id="simSlider" min="0" max="100" value="${Math.round(S.simF * 100)}">
+    </div>
+    <p class="muted">Off the trail (e.g. in town), your real GPS isn't on the route. Turn this on
+    to drop a fake hiker anywhere along your hike and watch the Now tab react. Turn it off before
+    you actually head out.</p></div>
   <div class="card"><h2><span class="ic">📡</span>Status</h2><div class="grid" id="stat"></div></div>`;
   document.getElementById('awake').onchange = e => { S.awake = e.target.checked; save(); applyWakeLock(); };
+  const sim = document.getElementById('sim'), ctl = document.getElementById('simctl');
+  sim.onchange = e => {
+    S.sim = e.target.checked; save();
+    ctl.style.display = S.sim ? '' : 'none';
+    if (S.sim) applySim(); else getFix();
+  };
+  document.getElementById('simSlider').oninput = e => {
+    S.simF = e.target.value / 100; save();
+    document.getElementById('simPct').textContent = e.target.value + '%';
+    applySim();
+  };
   updateStatus();
 }
 function updateStatus() {
@@ -405,6 +456,7 @@ function setGps(state, txt) {
   document.getElementById('gpstxt').textContent = txt;
 }
 function getFix(force) {
+  if (S.sim) { applySim(); return; }
   if (locating) return;
   if (!('geolocation' in navigator)) { setGps('off', 'no GPS'); return; }
   locating = true; setGps('', 'locating…'); renderNow();
@@ -422,9 +474,9 @@ function getFix(force) {
 document.querySelector('header .gps').onclick = () => getFix(true);   // tap status to refresh
 // Refresh when reopened if the last fix is stale; never poll in the background.
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && Date.now() - lastFixMs > 120000) getFix();
+  if (!S.sim && document.visibilityState === 'visible' && Date.now() - lastFixMs > 120000) getFix();
 });
-getFix();   // one fix on open
+if (S.sim) applySim(); else getFix();   // one fix on open
 
 // Wake lock
 let wl = null;
