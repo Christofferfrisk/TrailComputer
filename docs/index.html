@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1d5c39">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TrailComp">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+<title>Trail Computer — Kungsleden</title>
+</head>
+<body>
+<header>
+  <h1>Trail Computer</h1>
+  <span class="gps"><span class="dot off" id="gpsdot"></span><span id="gpstxt">no GPS</span></span>
+</header>
+
+<main>
+  <nav class="tabbar">
+    <button data-p="now" class="active">Now</button>
+    <button data-p="plan">Plan</button>
+    <button data-p="info">Info</button>
+  </nav>
+
+  <section class="panel active" id="p-now"></section>
+  <section class="panel" id="p-plan"></section>
+  <section class="panel" id="p-info"></section>
+</main>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
