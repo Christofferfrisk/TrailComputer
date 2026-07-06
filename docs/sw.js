@@ -1,5 +1,5 @@
 // Offline app shell. Bump CACHE when any cached file changes.
-const CACHE = 'trailcomp-v2';
+const CACHE = 'trailcomp-v4';
 const ASSETS = [
   '.', 'index.html', 'style.css', 'data.js', 'app.js',
   'manifest.json', 'icon-192.png', 'icon-512.png'

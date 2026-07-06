@@ -98,6 +98,7 @@ function computeNow() {
     out.remKm = (kebDone ? (end - sp.cum) : toKeb) / 1000;
     out.etaMin = naismithMin(out.remKm, 0);
     out.frac = 0; out.doneKm = 0;
+    out.legFrac = kebDone ? (end > keb ? (sp.cum - keb) / (end - keb) : 1) : (keb > 0 ? sp.cum / keb : 0);
     out.totalKm = (end / 1000) + (cumKm(eSlot) - cumKm(sSlot));
     out.approach = `${(sp.cum / 1000).toFixed(1)} km from Nikkaluokta`;
     return out;
@@ -110,6 +111,8 @@ function computeNow() {
   if (ns < 0) ns = eSlot;
   out.next = D.hutNames[ns];
   out.remKm = Math.max(0, cumKm(ns) - cur);
+  const pv = ns >= 1 ? cumKm(ns - 1) : 0;                 // leg = previous hut -> next hut
+  out.legFrac = Math.max(0, Math.min(1, (cur - pv) / Math.max(0.01, cumKm(ns) - pv)));
   out.remAsc = ascentBetween(sm.seg, D.huts[ns]);
   out.etaMin = naismithMin(out.remKm, out.remAsc);
   out.altM = Math.round(D.route[sm.seg][3]);
@@ -185,7 +188,9 @@ function renderNow() {
       <div class="sub">to <b>${n.next}</b></div>
       <div class="sub">ETA <b>${fmtETA(n.etaMin)}</b>${n.remAsc ? ` · climb <b>${Math.round(n.remAsc)} m</b>` : ''}</div>
       ${n.totalKm ? `<div class="sub"><b>${Math.round(n.doneKm)}</b> of ${Math.round(n.totalKm)} km done</div>` : ''}
-    </div></div>`;
+    </div></div>
+    ${n.legFrac != null ? `<div class="legbar"><i style="width:${Math.round(n.legFrac * 100)}%"></i></div>
+    <div class="sub2"><b>${Math.round(n.legFrac * 100)}%</b> of leg to ${n.next}</div>` : ''}`;
   if (n.onSpur) h += `<p class="muted">On the Kebnekaise approach · ${n.approach}.</p>`;
   if (n.off) h += `<div class="warn">⚠ You seem to be more than 150 m off the trail line.</div>`;
   if (n.arrived) h += `<div class="warn" style="background:#e6f2ea;color:#1d5c39">✓ At ${n.next} — end of your section.</div>`;
