@@ -74,6 +74,7 @@ info = {
     "emergency": "In an emergency call 112 and ask for Fjallraddningen (mountain rescue). Give the nearest hut or a lake/peak name. Reception is patchy - a satellite messenger is the reliable option.",
     "marking": "Summer route is marked with cairns and red-painted poles; winter with red crosses. Boats cross Teusajaure and the Kebnats sound (Saltoluokta) - both run on a timetable, not on demand.",
     "boatShortcut": "Nikkaluokta start: a boat across Laddjujavri runs several times a day and cuts about 6 km off the 19 km leg to Kebnekaise.",
+    "lastLeg": "Skip the 30 km Vakkotavare-Saltoluokta walk: the bus leaves Vakkotavare 14:40 and reaches Kebnats 15:40 (roadtoritsem.com), then M/S Langas crosses to Saltoluokta. Boat runs 18 Jun-20 Sep, daily: Saltoluokta->Kebnats 10:00 & 16:30, Kebnats->Saltoluokta 10:25 in the morning (check the afternoon return on site). Miss the bus and it is a long wait - plan the day around 14:40.",
 }
 
 data = {

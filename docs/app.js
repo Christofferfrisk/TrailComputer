@@ -414,7 +414,8 @@ function renderInfo() {
     <p class="isec"><b>Season</b> ${D.info.season}</p>
     <p class="isec"><b>Emergency</b> ${D.info.emergency}</p>
     <p class="isec"><b>Markings &amp; boats</b> ${D.info.marking}</p>
-    ${D.info.boatShortcut ? `<p class="isec"><b>Nikkaluokta boat</b> ${D.info.boatShortcut}</p>` : ''}</div>` : ''}
+    ${D.info.boatShortcut ? `<p class="isec"><b>Nikkaluokta boat</b> ${D.info.boatShortcut}</p>` : ''}
+    ${D.info.lastLeg ? `<p class="isec"><b>Last leg: bus + boat</b> ${D.info.lastLeg}</p>` : ''}</div>` : ''}
   <div class="card"><h2><span class="ic">📡</span>Status</h2><div class="grid" id="stat"></div></div>`;
   document.getElementById('awake').onchange = e => { S.awake = e.target.checked; save(); applyWakeLock(); };
   const sim = document.getElementById('sim'), ctl = document.getElementById('simctl');
