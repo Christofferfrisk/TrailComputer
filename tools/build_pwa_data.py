@@ -82,10 +82,15 @@ info = {
     },
 }
 
+# "Don't miss" side-trips keyed by the hut you overnight at. Source: STF trail guide.
+tips = {
+    "Aktse": "In clear weather, a side-trip up Skierffe - the photographers' favourite, with a huge view over Rapadalen and the Parte massif in Sarek.",
+}
+
 data = {
     "route": route, "huts": huts, "hutNames": hut_names,
     "stages": stages, "stores": stores, "sauna": sauna, "station": station,
-    "transport": transport, "info": info,
+    "transport": transport, "info": info, "tips": tips,
     "spur": {"route": spur_route, "kebIdx": spur_keb_idx, "stops": keb_stops,
              "afterHut": after_hut, "junction": junction},
 }
