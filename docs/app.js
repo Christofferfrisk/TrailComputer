@@ -59,8 +59,8 @@ function hikeBounds() {                            // [startSlot, endSlot] on th
 }
 function cumKm(slot) { return D.route[D.huts[slot]][2] / 1000; }
 
-function naismithMin(km, ascM) {
-  return Math.round(km / 4.5 * 60 + Math.max(0, ascM) / 600 * 60);
+function naismithMin(km, ascM, kmh) {
+  return Math.round(km / (kmh || 4.5) * 60 + Math.max(0, ascM) / 600 * 60);
 }
 function ascentBetween(idxA, idxB) {               // cumAsc field on route points
   return Math.max(0, D.route[idxB][4] - D.route[idxA][4]);
@@ -80,6 +80,7 @@ function agoStr(ms) {
   if (s < 5400) return Math.round(s / 60) + ' min ago';
   return Math.round(s / 3600) + ' h ago';
 }
+const hhmm = ms => { const d = new Date(ms); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
 
 // --- simulation (bench testing off the trail) -------------------------------
 function tripPolyline() {
@@ -121,6 +122,11 @@ function computeNow() {
   out.onSpur = sp.lat < sm.lat && sp.lat < 3000;
   out.off = Math.min(sm.lat, sp.lat) > 150;
 
+  const spdKmh = pos.spd > 0 ? pos.spd * 3.6 : 0;   // adjust ETA to your real pace when moving
+  out.measuredPace = spdKmh >= 1.5 && spdKmh <= 9;  // else fall back to Naismith 4.5 km/h
+  const pace = out.measuredPace ? spdKmh : 4.5;
+  out.pace = pace;
+
   if (out.onSpur) {
     const keb = D.spur.route[D.spur.kebIdx][2], end = D.spur.route[D.spur.route.length - 1][2];
     const toKeb = keb - sp.cum, kebDone = sp.cum >= keb;
@@ -128,7 +134,7 @@ function computeNow() {
     out.remKm = (kebDone ? (end - sp.cum) : toKeb) / 1000;
     const tgtIdx = kebDone ? D.spur.route.length - 1 : D.spur.kebIdx;
     out.remAsc = Math.max(0, D.spur.route[tgtIdx][4] - D.spur.route[sp.seg][4]);
-    out.etaMin = naismithMin(out.remKm, out.remAsc);
+    out.etaMin = naismithMin(out.remKm, out.remAsc, pace);
     out.doneKm = sp.cum / 1000;
     out.totalKm = tripKm;
     out.frac = out.doneKm / tripKm;
@@ -147,7 +153,7 @@ function computeNow() {
   const pv = ns >= 1 ? cumKm(ns - 1) : 0;                 // leg = previous hut -> next hut
   out.legFrac = Math.max(0, Math.min(1, (cur - pv) / Math.max(0.01, cumKm(ns) - pv)));
   out.remAsc = ascentBetween(sm.seg, D.huts[ns]);
-  out.etaMin = naismithMin(out.remKm, out.remAsc);
+  out.etaMin = naismithMin(out.remKm, out.remAsc, pace);
   out.altM = Math.round(D.route[sm.seg][3]);
   out.arrived = out.remKm < 0.06 && ns === eSlot;
 
@@ -238,7 +244,8 @@ function renderNow() {
     <div class="heronum">
       <div class="dist">${n.remKm.toFixed(1)}<span>km</span></div>
       <div class="sub">to <b>${n.next}</b></div>
-      <div class="sub">ETA <b>${fmtETA(n.etaMin)}</b>${n.remAsc ? ` · climb <b>${Math.round(n.remAsc)} m</b>` : ''}</div>
+      <div class="sub">ETA <b>${fmtETA(n.etaMin)}</b>${n.measuredPace ? ` <span class="dim">at ${n.pace.toFixed(1)} km/h</span>` : ''}${n.remAsc ? ` · climb <b>${Math.round(n.remAsc)} m</b>` : ''}</div>
+      <div class="sub">arrive <b>~${hhmm(lastFixMs + n.etaMin * 60000)}</b> <span class="dim">· as of ${hhmm(lastFixMs)}</span></div>
     </div></div>
     ${n.totalKm ? `<div class="legbar"><i style="width:${Math.round((n.frac || 0) * 100)}%"></i></div>
     <div class="sub2"><b>${Math.round((n.frac || 0) * 100)}%</b> of hike · ${Math.round(n.doneKm)} of ${Math.round(n.totalKm)} km</div>` : ''}`;
