@@ -113,7 +113,7 @@ function computeNow() {
   const startMain = hikeActive() ? mainSlotOfCode(S.start) : sSlot;   // Singi for a spur start
   const spurTotalKm = (hikeActive() && S.start >= 1000) ? D.spur.route[D.spur.route.length - 1][2] / 1000 : 0;
   const tripKm = Math.max(0.1, spurTotalKm + (cumKm(eSlot) - cumKm(startMain)));
-  const out = { hasFix: !!pos, off: false, onSpur: false };
+  const out = { hasFix: !!pos, off: false, onSpur: false, totalKm: hikeActive() ? tripKm : 0 };
   if (!pos) return out;
 
   const sm = snap(D.route, pos.lat, pos.lon);
@@ -387,7 +387,7 @@ function renderPlan() {
   const [sSlot, eSlot] = hikeBounds();
   const n = computeNow();
   let h = `<div class="card"><h2><span class="ic">🥾</span>This hike</h2>
-    ${hikeActive() ? `<p class="prog"><b>${codeName(S.start)}</b> → <b>${codeName(S.end)}</b> · ≈ ${Math.round(cumKm(eSlot) - cumKm(sSlot))} km</p>` : ''}
+    ${hikeActive() ? `<p class="prog"><b>${codeName(S.start)}</b> → <b>${codeName(S.end)}</b> · ≈ ${Math.round(n.totalKm)} km</p>` : ''}
     <div class="field"><label>Start</label><select id="selS">${hikeOptions(S.start)}</select></div>
     <div class="field"><label>End</label><select id="selE">${hikeOptions(S.end)}</select></div>
     <p class="muted"><a href="#" id="fullRoute">Use full route</a> · the plan uses only this section.</p></div>`;
