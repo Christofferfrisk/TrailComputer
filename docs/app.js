@@ -3,7 +3,7 @@ const D = window.TC_DATA;
 const R2D = 180 / Math.PI, D2R = Math.PI / 180;
 
 // --- persisted settings -----------------------------------------------------
-const S = Object.assign({ start: -1, end: -1, dayH: 6, awake: false, sim: false, simF: 0 },
+const S = Object.assign({ start: -1, end: -1, dayH: 6, dayFlex: 1, awake: false, sim: false, simF: 0 },
   JSON.parse(localStorage.getItem('tc') || '{}'));
 const save = () => localStorage.setItem('tc', JSON.stringify(S));
 
@@ -306,7 +306,7 @@ function planDays() {
   }
   const newDay = f => ({ from: f, to: f, km: 0, hrs: 0, hrsHi: 0, boat: false, walkBoat: false, n: 0, board: null });
   const days = []; let day = null;
-  const tgt = S.dayH || 6;
+  const tgt = (S.dayH || 6) + (S.dayFlex || 0);  // allow days to run up to target + flex before splitting
   for (const lg of legs) {
     if (!day) day = newDay(lg.from);
     else if (!lg.transit && day.n > 0 && day.hrs + lg.hrs > tgt) { days.push(day); day = newDay(day.to); }
@@ -321,15 +321,13 @@ function planDays() {
   const last = days[days.length - 1];           // finishing at a hut you bus out from
   if (last && !last.board && depart[last.to])
     last.board = Object.assign({ stage: 'exit', hut: last.to, walkLo: last.hrs, walkHi: last.hrsHi }, depart[last.to]);
-  days.forEach(d => {                           // suggested start / arrival for every day
-    if (d.board) {
-      const buf = (d.board.buffer || 15) / 60;
-      if (d.board.walkHi < 0.25) d.beBy = timeMinus(d.board.time, buf);
-      else d.startSug = timeMinus(d.board.time, d.board.walkHi + buf + 0.5);
-    } else {
-      d.startSug = DAY_START;
-      d.arrive = timePlus(DAY_START, d.hrsHi);
-    }
+  days.forEach(d => {                           // suggested start time for boat/bus days
+    if (!d.board) return;
+    const buf = (d.board.buffer || 15) / 60;
+    if (d.board.walkHi < 0.25) { d.beBy = timeMinus(d.board.time, buf); return; }
+    const startMin = toMin(d.board.time) - Math.round((d.board.walkHi + buf + 0.5) * 60);
+    if (startMin < 5 * 60) d.infeasible = true;  // too much walking to still catch it that day
+    else d.startSug = clock(startMin);
   });
   return days;
 }
@@ -372,7 +370,9 @@ function dayNote(d) {
   if (d.board) {
     const b = d.board, buf = (b.buffer || 15) / 60;
     const tail = b.stage === 'transfer' && b.arrive ? `, in ${d.to} ~${b.arrive}` : '';
-    if (b.stage === 'exit')
+    if (d.infeasible)
+      h += `<div class="daynote sched"><b>⚠ Too far for the ${b.time} ${b.mode}</b> — ~${b.walkLo}–${b.walkHi} h to ${b.hut} won't fit before ${b.time}. Split this day (lower the target or flexibility) or overnight at ${b.hut}.</div>`;
+    else if (b.stage === 'exit')
       h += `<div class="daynote sched"><b>🕗 Start by ~${d.startSug}</b> — reach ${b.hut} for the ${b.time} bus out (be at the stop by ~${timeMinus(b.time, buf)}).</div>`;
     else if (d.beBy)
       h += `<div class="daynote sched"><b>🚌 Catch the ${b.time} ${b.mode} at ${b.hut}</b> — be at the stop by ~${d.beBy}. ${b.label}${tail}.</div>`;
@@ -394,8 +394,13 @@ function renderPlan() {
 
   // day planner
   const days = planDays();
+  const flexOpts = [0, 1, 2, 3].map(v =>
+    `<option value="${v}"${(S.dayFlex || 0) === v ? ' selected' : ''}>${v ? '± ' + v + ' h' : 'Strict (±0 h)'}</option>`).join('');
   h += `<div class="card"><h2><span class="ic">📅</span>Day planner</h2>
-    <div class="field"><label>Target hours / day</label><input id="dayH" inputmode="numeric" value="${S.dayH}"></div>`;
+    <div class="row2">
+      <div class="field"><label>Target hours / day</label><input id="dayH" inputmode="numeric" value="${S.dayH}"></div>
+      <div class="field"><label>Flexibility</label><select id="dayFlex">${flexOpts}</select></div>
+    </div>`;
   if (!days.length) h += `<p class="muted">Set a Start &amp; End to plan daily stages.</p>`;
   days.forEach((d, i) => {
     h += `<div class="day"><div class="daynum">${i + 1}</div><div class="dayb">
@@ -403,7 +408,7 @@ function renderPlan() {
       <div class="daym"><span class="m">${Math.round(d.km)} km</span><span class="m">~${Math.round(d.hrs)} h</span>
       ${d.boat ? '<span class="m bt">⚓ boat</span>' : ''}</div>${dayNote(d)}</div></div>`;
   });
-  if (days.length) h += `<p class="muted">${days.length} days at ~${S.dayH} h/day · boat/bus days show a suggested start · STF stage figures.</p>`;
+  if (days.length) h += `<p class="muted">${days.length} days at ~${S.dayH} h/day${S.dayFlex ? ` (up to ~${S.dayH + S.dayFlex} h)` : ''} · boat/bus days show a suggested start · STF stage figures.</p>`;
   h += `</div>`;
 
   // elevation
@@ -434,6 +439,7 @@ function renderPlan() {
   document.getElementById('selS').onchange = e => { S.start = +e.target.value; save(); renderAll(); };
   document.getElementById('selE').onchange = e => { S.end = +e.target.value; save(); renderAll(); };
   document.getElementById('dayH').onchange = e => { S.dayH = Math.max(2, Math.min(16, +e.target.value || 6)); save(); renderAll(); };
+  document.getElementById('dayFlex').onchange = e => { S.dayFlex = +e.target.value || 0; save(); renderAll(); };
   document.getElementById('fullRoute').onclick = ev => { ev.preventDefault(); S.start = -1; S.end = -1; save(); renderAll(); };
 }
 
