@@ -285,7 +285,8 @@ function planDays() {
     for (let j = S.start - 1000; j >= 0; j--) {
       const s = D.spur.stops[j];
       const to = j > 0 ? D.spur.stops[j - 1].name : D.spur.junction;
-      legs.push({ to, km: s.legKm, hrs: parseHrs(s.time) });
+      legs.push({ from, to, km: s.legKm, hrs: parseHrs(s.time) });
+      from = to;
     }
   }
   for (let k = sSlot + 1; k <= eSlot; k++) {
@@ -293,18 +294,33 @@ function planDays() {
     const km = st ? st.km : (cumKm(k) - cumKm(k - 1));
     const asc = ascentBetween(D.huts[k - 1], D.huts[k]);
     const hrs = st ? parseHrs(st.time) : (km / 4.5 + asc / 600);
-    legs.push({ to: D.hutNames[k], km, hrs, boat: st && st.boat });
+    legs.push({ from, to: D.hutNames[k], km, hrs, boat: st && st.boat });
+    from = D.hutNames[k];
   }
-  const days = []; let day = { from, to: from, km: 0, hrs: 0, boat: false, n: 0 };
+  const depart = (D.info && D.info.depart) || {};
+  const newDay = f => ({ from: f, to: f, km: 0, hrs: 0, boat: false, n: 0, transfer: null });
+  const days = []; let day = null;
   const tgt = S.dayH || 6;
   for (const lg of legs) {
-    if (day.n > 0 && day.hrs + lg.hrs > tgt) { days.push(day); day = { from: day.to, to: day.to, km: 0, hrs: 0, boat: false, n: 0 }; }
+    if (!day) day = newDay(lg.from);
+    else if (day.n > 0 && day.hrs + lg.hrs > tgt) { days.push(day); day = newDay(day.to); }
+    if (depart[lg.from])                        // this leg boards a scheduled bus/boat
+      day.transfer = Object.assign({ hut: lg.from, walkH: day.hrs }, depart[lg.from]);
     day.km += lg.km; day.hrs += lg.hrs; day.boat = day.boat || lg.boat; day.to = lg.to; day.n++;
   }
-  if (day.n > 0) days.push(day);
+  if (day && day.n > 0) days.push(day);
+  // exiting at a hut that only has a scheduled departure onward
+  const last = days[days.length - 1];
+  if (last && !last.transfer && depart[last.to]) last.exit = Object.assign({ hut: last.to }, depart[last.to]);
   return days;
 }
 const parseHrs = t => { const m = /(\d+)/.exec(t || ''); return m ? +m[1] : 0; };
+// subtract a duration (hours, fractional) from an "HH:MM" clock time
+function timeMinus(hhmm, hoursFloat) {
+  const [h, m] = hhmm.split(':').map(Number);
+  let t = ((h * 60 + m - Math.round(hoursFloat * 60)) % 1440 + 1440) % 1440;
+  return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0');
+}
 
 function elevProfile() {
   const [sSlot, eSlot] = hikeBounds();
@@ -332,6 +348,20 @@ function elevProfile() {
     <text x="${pL + pw}" y="${base + 15}" font-size="11" font-weight="bold" text-anchor="end">${codeName(S.end)} ▲</text>
   </svg>`;
 }
+function dayNote(d) {
+  if (d.transfer) {
+    const t = d.transfer, ic = t.mode === 'bus' ? '🚌' : '⚓', buf = (t.buffer || 15) / 60;
+    if (t.walkH < 0.25)
+      return `<div class="daynote"><b>${ic} Catch the ${t.time} ${t.mode} at ${t.hut}</b> — be there by ~${timeMinus(t.time, buf)}. ${t.label}.</div>`;
+    const startBy = timeMinus(t.time, t.walkH + buf + 0.5);
+    return `<div class="daynote"><b>${ic} Start by ~${startBy}</b> — it's ~${t.walkH} h on to ${t.hut} and the only ${t.mode} leaves ${t.time}. ${t.label}.</div>`;
+  }
+  if (d.exit)
+    return `<div class="daynote"><b>🚌 Leaving ${d.exit.hut}:</b> catch the ${d.exit.time} ${d.exit.mode} — ${d.exit.label}.</div>`;
+  if (d.boat)
+    return `<div class="daynote">⚓ This day has a boat crossing that runs on a timetable — confirm the departure the evening before.</div>`;
+  return '';
+}
 function renderPlan() {
   const [sSlot, eSlot] = hikeBounds();
   const n = computeNow();
@@ -350,7 +380,7 @@ function renderPlan() {
     h += `<div class="day"><div class="daynum">${i + 1}</div><div class="dayb">
       <div class="dayr"><b>${d.from}</b> → <b>${d.to}</b></div>
       <div class="daym"><span class="m">${Math.round(d.km)} km</span><span class="m">~${Math.round(d.hrs)} h</span>
-      ${d.boat ? '<span class="m bt">⚓ boat</span>' : ''}</div></div></div>`;
+      ${d.boat ? '<span class="m bt">⚓ boat</span>' : ''}</div>${dayNote(d)}</div></div>`;
   });
   if (days.length) h += `<p class="muted">${days.length} days at ~${S.dayH} h/day · STF stage figures.</p>`;
   h += `</div>`;
