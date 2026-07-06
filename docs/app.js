@@ -67,8 +67,19 @@ function ascentBetween(idxA, idxB) {               // cumAsc field on route poin
 }
 const fmtETA = m => (m < 0 ? '—' : `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`);
 
-// --- live position ----------------------------------------------------------
-let pos = null;   // {lat,lon,acc,spd,ts}
+// --- on-demand position -----------------------------------------------------
+// One fix at a time (the GPS radio powers down between fixes) to spare battery,
+// the same "glance, don't stare" idea the hardware used.
+let pos = null;        // {lat,lon,acc,spd}
+let lastFixMs = 0;
+let locating = false;
+function agoStr(ms) {
+  if (!ms) return '';
+  const s = (Date.now() - ms) / 1000 | 0;
+  if (s < 45) return 'just now';
+  if (s < 5400) return Math.round(s / 60) + ' min ago';
+  return Math.round(s / 3600) + ' h ago';
+}
 
 function computeNow() {
   const [sSlot, eSlot] = hikeBounds();
@@ -151,13 +162,19 @@ function miniMap(n) {
     <circle cx="${W / 2}" cy="${H / 2}" r="10" fill="none" stroke="#c0392b" stroke-width="2"/>
     <text x="10" y="16" font-size="11" font-weight="700" fill="#1b2430">▲N</text></svg>`;
 }
+function wireRefresh() { const b = document.getElementById('refresh'); if (b) b.onclick = () => getFix(true); }
 function renderNow() {
   const n = computeNow(), el = document.getElementById('p-now');
   if (!n.hasFix) {
+    const msg = locating ? 'Locating…' : 'No position yet';
+    const sub = locating ? 'reading GPS — may take a moment' : 'tap below to get your position';
     el.innerHTML = `<div class="card"><div class="hero">${ring(0)}
-      <div class="heronum"><div class="dist" style="font-size:24px">Waiting for GPS…</div>
-      <div class="sub">go outside with a clear view of the sky</div></div></div>
-      <p class="muted">GPS works with no phone signal. Position may take a minute on a cold start.</p></div>`;
+      <div class="heronum"><div class="dist" style="font-size:24px">${msg}</div>
+      <div class="sub">${sub}</div></div></div>
+      <button class="btn" id="refresh" style="width:100%"${locating ? ' disabled' : ''}>${locating ? 'Locating…' : '⟳ Get my position'}</button>
+      <p class="muted">GPS works with no phone signal; a cold start can take a minute. The GPS
+      turns off between checks to save battery.</p></div>`;
+    wireRefresh();
     return;
   }
   const acc = pos.acc ? `±${Math.round(pos.acc)} m` : '—';
@@ -177,8 +194,10 @@ function renderNow() {
     <div class="tile"><div class="tv">${spd}</div><div class="tl">speed</div></div>
     <div class="tile"><div class="tv">${acc}</div><div class="tl">GPS acc</div></div>
   </div>${miniMap(n)}
-  <p class="muted">Schematic — line + huts only, no terrain. Use a topo-map app for the ground detail.</p></div>`;
+  <button class="btn sec" id="refresh" style="width:100%;margin-top:12px"${locating ? ' disabled' : ''}>${locating ? 'Locating…' : '⟳ Update position'}</button>
+  <p class="muted">Updated ${agoStr(lastFixMs)} · schematic map (line + huts only) — use a topo app for terrain. GPS is off between checks.</p></div>`;
   el.innerHTML = h;
+  wireRefresh();
 }
 
 // --- rendering: Plan --------------------------------------------------------
@@ -361,15 +380,27 @@ function setGps(state, txt) {
   const d = document.getElementById('gpsdot'); d.className = 'dot ' + state;
   document.getElementById('gpstxt').textContent = txt;
 }
-if ('geolocation' in navigator) {
-  navigator.geolocation.watchPosition(p => {
-    pos = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy,
-            spd: p.coords.speed, ts: p.timestamp };
+function getFix(force) {
+  if (locating) return;
+  if (!('geolocation' in navigator)) { setGps('off', 'no GPS'); return; }
+  locating = true; setGps('', 'locating…'); renderNow();
+  navigator.geolocation.getCurrentPosition(p => {
+    pos = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy, spd: p.coords.speed };
+    lastFixMs = Date.now(); locating = false;
     setGps('ok', pos.acc ? `±${Math.round(pos.acc)} m` : 'fix');
     renderNow(); updateStatus();
-  }, err => setGps('off', err.code === 1 ? 'permission denied' : 'no GPS'),
-  { enableHighAccuracy: true, maximumAge: 5000, timeout: 60000 });
-} else setGps('off', 'no GPS');
+  }, err => {
+    locating = false;
+    setGps('off', err.code === 1 ? 'permission denied' : (err.code === 3 ? 'timed out' : 'no GPS'));
+    renderNow();
+  }, { enableHighAccuracy: true, timeout: 30000, maximumAge: force ? 0 : 20000 });
+}
+document.querySelector('header .gps').onclick = () => getFix(true);   // tap status to refresh
+// Refresh when reopened if the last fix is stale; never poll in the background.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && Date.now() - lastFixMs > 120000) getFix();
+});
+getFix();   // one fix on open
 
 // Wake lock
 let wl = null;
