@@ -87,17 +87,18 @@ tips = {
     "Aktse": "In clear weather, a side-trip up Skierffe - the photographers' favourite, with a huge view over Rapadalen and the Parte massif in Sarek.",
 }
 
-# Stage-specific practical notes, keyed by the hut the leg ends at (matches "stages").
+# Stage notes describe the leg AHEAD, keyed by the hut you leave (hiking south).
 notes = {
-    "Kebnekaise Fjällstation": "Optional boat over Ladtjojaure cuts ~6 km (runs to a timetable). Stony and partly bog-bridged path; bridge over the glacier river Darfáljohka.",
-    "Singi": "No shop - carry food. Runs through the narrow, dramatic Laddjuvagge below steep walls; exposed summit ridge with big views both ways.",
-    "Kaitumjaure": "Follows the Tjäktjajåkka river - water and rest spots almost everywhere early on. After the bridge ~3 km before Kaitumjaure it is rougher but mostly bog-bridged.",
-    "Teusajaure": "A renovated Sámi kåta ~4 km south of Kaitumjaure gives emergency shelter. High point 780 m, then a steep descent; a few boggy patches up top.",
-    "Vakkotavare": "Starts with the Teusajaure crossing - the hut warden runs a boat shuttle, and there is a self-service rowboat, but the lake can be very hard to row in wind. Enters Stora Sjöfallet NP. Long, tough climb; no shop.",
-    "Sitojaure": "No shop - carry your own food. Streams for water on the way; a wind shelter at Autsutjvagge marks the halfway point. Steep climb at the start, high point ~775 m.",
-    "Aktse": "Starts with the mandatory boat across Kaskajaure and Kåbtajaure (from Sitojaure). Water is scarce on the open plateau - fill up in the birch forest below before the climb.",
-    "Pårte": "Starts with the boat across Laitaure - a self-service rowing boat or the motorboat. Enters Sarek National Park. No shop - carry provisions. Final descent is tricky when wet.",
-    "Kvikkjokk": "Rough and rocky in places, with a bridge over Tjåltajåkka. The slope at Tingstallstenen can turn into a stream in prolonged rain.",
+    "Nikkaluokta": "Take the optional boat over Ladtjojaure to cut ~6 km (timetable), or walk the stony, partly bog-bridged path; bridge over the glacier river Darfáljohka.",
+    "Kebnekaise Fjällstation": "Ahead: the narrow, dramatic Laddjuvagge below steep walls, then an exposed summit ridge with big views. Singi has no shop.",
+    "Singi": "Follows the Tjäktjajåkka - water and rest spots almost everywhere early, then rougher and bog-bridged nearer Kaitumjaure.",
+    "Kaitumjaure": "A renovated Sámi kåta ~4 km on gives emergency shelter. Climbs to 780 m, then drops steeply; a few boggy patches up top.",
+    "Teusajaure": "Cross the lake first - warden boat shuttle or self-service rowboat, but it can be very hard to row in wind. Then a long climb into Stora Sjöfallet NP. Vakkotavare has no shop.",
+    "Vakkotavare": "Either the 14:40 bus + boat (see the day planner) or the 30 km walk, which most split into two days.",
+    "Saltoluokta": "Steep climb early to ~775 m; streams for water; a wind shelter at Autsutjvagge halfway. Sitojaure has no shop.",
+    "Sitojaure": "Boat across Kaskajaure and Kåbtajaure at the start. Water is scarce on the open plateau - fill up in the birch forest below before the climb.",
+    "Aktse": "Boat across Laitaure at the start - self-service rowing boat or the motorboat. Enters Sarek National Park; the final descent is tricky when wet. Pårte has no shop.",
+    "Pårte": "Rough and rocky in places, with a bridge over Tjåltajåkka; the Tingstallstenen slope can turn into a stream in prolonged rain.",
 }
 
 data = {

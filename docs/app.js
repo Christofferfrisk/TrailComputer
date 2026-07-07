@@ -437,7 +437,7 @@ function renderPlan() {
     const done = cur >= 0 && cumKm(k) < cur;
     const cls = (!inHike ? 'dim' : '') + (done ? ' done' : '');
     const leg = st ? `${st.km} km · ${st.time}` : (k > 0 ? `${(cumKm(k) - cumKm(k - 1)).toFixed(1)} km` : 'start');
-    const note = inHike && D.notes && D.notes[D.hutNames[k]];
+    const note = inHike && k < eSlot && D.notes && D.notes[D.hutNames[k]];  // leg-ahead note
     const tip = inHike && D.tips && D.tips[D.hutNames[k]];
     h += `<li class="${cls}"><span class="node">${k + 1}</span>
       <span class="name">${D.hutNames[k]}${chips(D.hutNames[k])}</span>
