@@ -1,237 +1,102 @@
 <p align="center">
-  <img src="docs/img/logo.png" width="112" alt="Trail Computer logo">
+  <img src="docs/img/logo.png" width="112" alt="Kungsleden Navigator logo">
 </p>
 
-# Trail Computer
+# Kungsleden Navigator
 
-A small, battery-powered device that helps you navigate on long hikes with no
-phone signal. It is built for the Kungsleden in Swedish Lapland.
+An offline phone app for the Kungsleden in Swedish Lapland. It shows where you
+are, how far to the next hut, and how your days add up — with no phone signal
+and nothing to install from a store.
 
-It sleeps almost all the time. You press a button, it wakes up, shows where you
-are and what the weather is doing on an e-paper screen, then goes back to sleep.
-Everything it needs — the trail, the huts, your settings — is stored on the
-device. You never need the internet on the trail.
+## Get it on your phone
 
-To change settings, you hold the button. The device turns on a short-lived
-Wi-Fi network. You connect with your phone and open a web page. No app to
-install.
+<img src="docs/img/qr.png" width="150" align="right" alt="QR code to the app">
 
-**Main parts**
+1. Open **https://christofferfrisk.github.io/TrailComputer/** on your phone
+   (scan the code on the right, or type in the address).
+2. Add it to your home screen:
+   - **iPhone (Safari):** Share → *Add to Home Screen*.
+   - **Android (Chrome):** menu (⋮) → *Install app* / *Add to Home screen*.
+3. Open it once while you still have signal. After that it works fully offline.
 
-- **Brain:** DFRobot FireBeetle 2 ESP32-E N16R2 (DFR1139)
-- **Screen:** Waveshare 2.9" e-paper, 296×128, black/white
-- **Sensors:** BME280 (air pressure, temperature, humidity), QMC5883L (compass),
-  u-blox GPS
-- **Buttons:** one. Press to wake, hold to open settings.
+It is a normal web page, so there is no app store and no account.
 
----
+<br clear="right">
 
-## What the screens look like
+## What it does
 
-There are two main screens. You pick one in the settings page.
+- **Finds you with GPS, even with no reception.** Your phone's GPS works without
+  a mobile signal. Tap once to get a fix — the app doesn't keep the GPS running,
+  to spare your battery.
+- **Next hut at a glance.** Distance, climb left, and an arrival time based on
+  your real walking pace, then a short list of the huts after that.
+- **Whole-trip progress.** A bar and a map that fill in the part you've walked,
+  including the Kebnekaise / Nikkaluokta side trail.
+- **A day planner.** Pick a start and end hut and a daily pace; it splits the
+  route into days using STF's stage times. Boat and bus days get a suggested
+  start time — including the single daily 14:40 bus from Vakkotavare and the
+  M/S Langas boat to Saltoluokta.
+- **Stage notes.** Boats, scarce water, exposed passes and other things worth
+  knowing *before* you leave each hut.
+- **Season & safety.** Opening season, the emergency number, trail markings.
 
-**NAV** — a compass needle to the next hut, the distance, your arrival time, the
-climb left, your altitude, and the weather trend.
+It is a planning and awareness aid, not a safety device. Carry a paper map, a
+compass, and ideally a satellite messenger.
 
-![NAV screen](docs/img/screen-nav.png)
+## Offline and private
 
-**MAP** — a north-up map: an arrow for you, squares for huts, a ring for your
-destination, and a scale bar. The same numbers sit on the right.
+Everything — the route, the huts, the stage times — is stored on your phone.
+The app never sends your position anywhere. No account, no tracking, no server:
+once it is cached, it runs with the network switched off.
 
-![MAP screen](docs/img/screen-map.png)
+For real terrain, use a topographic app (Fjällkartan / Lantmäteriet, Topo GPS,
+OsmAnd) with the region downloaded. This app draws a schematic line only.
 
-These two are drawn on a PC, so the fonts are a little different from the real
-e-paper. Run `python tools/preview_display.py` to redraw them yourself.
+## How it is built
 
----
+A small progressive web app (PWA) in plain HTML, CSS and JavaScript. No build
+step and no framework.
 
-## How it works
-
-The device does one thing each time it wakes, then sleeps. There is no running
-loop. One wake = one cycle:
-
-1. Read the sensors.
-2. Turn on the GPS and wait for a fix.
-3. Read the compass (with the GPS off, so it doesn't disturb the reading).
-4. Work out your altitude by combining GPS and air pressure.
-5. Find where you are on the trail. Work out the distance left and an arrival
-   time (Naismith's rule).
-6. Draw one screen.
-7. Count the energy used, then sleep.
-
-Anything that must survive sleep is kept in the chip's RTC memory and copied to
-flash, so it also survives a battery swap. The trail itself lives in flash and
-is never copied to RTC.
-
-**Where each part of the code lives**
-
-| File | What it does |
+| File | What it is |
 |---|---|
-| `src/main.cpp` | runs the wake cycle |
-| `src/config.h` | pins, power model, thresholds (the **VERIFY** items) |
-| `src/state.{h,cpp}` | saved state, settings, trip log |
-| `src/geo.{h,cpp}` | distance, bearing, snapping to the trail |
-| `src/fusion.{h,cpp}` | altitude, total climb, pressure trend |
-| `src/gps.{h,cpp}` | switches GPS power, waits for a good fix |
-| `src/power.{h,cpp}` | energy accounting, battery curve |
-| `src/sun.{h,cpp}` | sunrise, sunset, daylight left |
-| `src/display.{h,cpp}` | the e-paper screens |
-| `src/config_portal.{h,cpp}` | the Wi-Fi settings page |
-| `src/route_table.h` | the main trail (generated from a GPX track) |
-| `src/spur_table.h` | the Kebnekaise side trail (generated) |
-| `src/route_stages.h` | hut distances, times, shops, sauna, transport |
-| `src/route_spurs.h` | side-trail names and coordinates |
-| `tools/gpx_to_route.py` | turn a GPX track into the main trail table |
-| `tools/build_spur.py` | build the side-trail table |
-| `tools/preview_display.py` | draw the screens on your PC as PNG images |
+| `docs/index.html` | the page shell |
+| `docs/app.js` | position, ETA, day planner — all the logic |
+| `docs/style.css` | styling |
+| `docs/data.js` | route, huts and stage data (generated) |
+| `docs/sw.js` | the service worker that makes it work offline |
+| `docs/manifest.json` | makes it installable |
+| `tools/build_pwa_data.py` | builds `data.js` from the route tables in `src/` |
 
----
-
-## Parts you need
-
-| Part | Notes |
-|---|---|
-| DFRobot FireBeetle 2 ESP32-E N16R2 (DFR1139) | charges a LiPo over USB-C, very low sleep current. Watch out: GPIO16/D11 is not connected, GPIO5 drives the onboard LED, GPIO27 is the onboard button. |
-| Waveshare 2.9" e-paper 296×128 black/white (SSD1680) | black/white only. The tri-colour version is too slow (~15 s per refresh). |
-| u-blox GPS module | NEO-M9N is fast, NEO-6M is cheap. It needs a backup-power pin for quick fixes. |
-| BME280 breakout | I²C, address 0x76 |
-| QMC5883L compass | I²C, address 0x0D |
-| P-channel MOSFET + 100 kΩ resistor | switches GPS power off during sleep |
-| Momentary push button | wakes the device; wired to ground |
-| 1S LiPo battery (or 18650) | charges through the board's USB-C port |
-| Two resistors for battery sensing | e.g. 2× 100 kΩ, giving a ratio of 2.0 |
-
----
-
-## How to wire it
-
-The pins are set in [`src/config.h`](src/config.h). Check each one against your
-own board's printed labels before you solder. The pins below are correct for the
-DFR1139.
-
-| Connect | to GPIO | Notes |
-|---|---|---|
-| e-paper CS | 14 | label D6. **Not** 5 — that pin drives the onboard LED. |
-| e-paper DC | 25 | label D2 |
-| e-paper RST | 26 | label D3 |
-| e-paper BUSY | 35 | label A3. **Not** 27 — that is the onboard button. |
-| e-paper SCK / MOSI | 18 / 23 | standard SPI pins |
-| I²C SDA / SCL | 21 / 22 | the BME280 and compass share these |
-| GPS RX / TX | 19 / 17 | board RX ← GPS TX, board TX → GPS RX. **Not** 16 — it is not connected on this board. 9600 baud. |
-| GPS power switch | 13 | P-MOSFET gate, on when low |
-| Wake button | 4 | wired to ground |
-| Battery sensing | 34 | through the two-resistor divider |
-
-**A note on GPS power.** The MOSFET switches the 3.3 V line and the gate is
-driven straight from GPIO13. While you are first testing on a breadboard, skip
-the MOSFET and run the GPS straight to 3.3 V — it's simpler. Add the switch
-later to save power. If you wire it differently, change `GPS_PWR_ACTIVE_LEVEL`.
-
-**Where to place each part.** These matter more than they look:
-
-- Point the GPS antenna at the sky. Never put it behind the battery. Keep its
-  wire away from the compass.
-- The firmware only reads the compass while the GPS is off. Keep the compass
-  away from battery wires and steel. Calibrate it inside the finished case.
-- The BME280 reads a bit warm because the board heats it. Give it a vent and a
-  thermal gap, then correct the rest with `BME_TEMP_OFFSET_C`.
-- Don't bend the e-paper ribbon forward. Don't charge a LiPo below 0 °C.
-
----
-
-## How to build and flash
-
-This is a PlatformIO project (Arduino framework). If the `pio` command isn't
-found, use `python -m platformio` instead.
+Rebuild the data after changing the route or the stage notes:
 
 ```bash
-# the real firmware
-pio run -e firebeetle2_esp32e -t upload --upload-port COM3
-pio device monitor -b 115200
-
-# two test builds for bring-up (they don't change the real firmware):
-pio run -e smoketest -t upload   # prints chip info, scans I²C, blinks the LED
-pio run -e wifitest  -t upload   # runs just the settings page over Wi-Fi
+python tools/build_pwa_data.py     # writes docs/data.js
 ```
 
-The board resets into the bootloader on its own. If an upload won't start, hold
-**BOOT**, tap **RST**, let go of BOOT, and try again. The board uses a CH340
-USB chip — install its driver if no COM port shows up.
+Bump `CACHE` in `docs/sw.js` whenever you change a cached file, so installed
+phones pull the update.
 
-The device sleeps after one cycle, so the monitor prints one burst and then goes
-quiet. That is normal. Press the button (or RST) to run another cycle.
-
----
-
-## Tools
+Run it locally:
 
 ```bash
-# Rebuild the main trail from a GPX track (Topo GPS, Gaia, Waymarked Trails):
-python tools/gpx_to_route.py track.gpx --huts data/huts.csv --eps 150 --reverse --c > src/route_table.h
-#   --reverse : walk north to south (index 0 = Abisko)
-#   --eps     : how much to simplify the line, in metres (~150)
-# Adding or removing huts changes the stop numbers, so re-pick your
-# Start and End in the settings page afterwards.
-
-# Draw the screens on your PC, no hardware needed:
-python tools/preview_display.py        # writes tools/preview/*.png
-
-# Rebuild the Kebnekaise side trail (Nikkaluokta -> Kebnekaise -> Singi).
-# Shape from a GPS track plus OpenStreetMap; heights from EU-DEM:
-python tools/build_spur.py > src/spur_table.h
-
-# Run the maths tests on your PC (needs `pip install --user ziglang` once):
-test\run_tests.cmd
+python -m http.server 8137 --directory docs
+# then open http://localhost:8137
 ```
 
-Run the tests after you change `geo`, `fusion`, `sun`, or `route_util`, or after
-you rebuild the trail. If a test fails, the distances, arrival times, or
-daylight on the device would be wrong.
+## Deploy (GitHub Pages)
 
----
+The app is served from the `docs/` folder by GitHub Pages. To publish it:
+**Settings → Pages → Source: Deploy from a branch → `main` / `docs` → Save.**
+The address above goes live about a minute later.
 
-## How to use it
+## The original hardware version
 
-- **Press** the button: wake, show the navigation screen, sleep.
-- **Hold** the button (about 2 seconds): open settings. The device starts a
-  Wi-Fi network called **`TrailComputer`** (open, no password). Connect with
-  your phone and open **`http://192.168.4.1`**. There you set your Start and
-  End hut, your daily pace, and other options. The Wi-Fi turns itself off after
-  about two minutes.
+This started as a battery-powered e-paper handheld built on an ESP32. That
+device still lives in the repo (`src/`); its build, wiring and flashing guide is
+in **[docs/HARDWARE.md](docs/HARDWARE.md)**. The phone app replaced it to save
+weight on the trail.
 
-**The screens**
+## Licence
 
-- **NAV** — a compass needle to the next hut, distance, arrival time, climb
-  left, altitude, and the weather trend.
-- **MAP** — a small north-up map: an arrow for you, squares for huts, a ring for
-  your destination, and a scale bar.
-
-Pick NAV or MAP in the settings page. You'll also see **NO FIX** (no GPS yet),
-**ARRIVED / End of hike** (with trip stats), **SETTINGS**, and **LOW BATTERY**.
-
----
-
-## Settings and calibration
-
-You can change these from the settings page while hiking, with no reflash. They
-are saved on the device: battery size and usable percentage, the BME
-temperature correction, and your daily pace. Fixed defaults live in `config.h`.
-
-**Calibration steps**
-
-1. **Battery** — set `BAT_DIVIDER_RATIO` to match your two resistors, then tune
-   the battery-percentage curve against your real pack.
-2. **Temperature** — compare the reading to a real thermometer after the board
-   warms up, then set the offset in the settings page.
-3. **Compass** — calibrate it inside the finished case.
-4. **Screen** — if your panel behaves oddly, switch the driver with
-   `EPD_USE_T94`.
-
-**Check before you build the final version**
-
-- [ ] The pins match your board's printed labels
-- [ ] The GPS power switch turns the right way (`GPS_PWR_ACTIVE_LEVEL`)
-- [ ] The battery divider ratio is right
-- [ ] The temperature offset is set
-- [ ] The e-paper driver matches your panel
-- [ ] GPIO4 can wake the board from sleep
+MIT — see [LICENSE](LICENSE). Route, hut and stage data from Svenska
+Turistföreningen (STF). © 2026 Christoffer Frisk.
