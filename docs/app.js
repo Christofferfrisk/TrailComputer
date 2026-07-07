@@ -3,7 +3,7 @@ const D = window.TC_DATA;
 const R2D = 180 / Math.PI, D2R = Math.PI / 180;
 
 // --- persisted settings -----------------------------------------------------
-const S = Object.assign({ start: -1, end: -1, dayH: 6, dayFlex: 1, awake: false, sim: false, simF: 0 },
+const S = Object.assign({ start: -1, end: -1, dayH: 6, dayFlex: 1, planTab: 'days', awake: false, sim: false, simF: 0 },
   JSON.parse(localStorage.getItem('tc') || '{}'));
 const save = () => localStorage.setItem('tc', JSON.stringify(S));
 
@@ -164,6 +164,24 @@ function computeNow() {
   return out;
 }
 
+// The next few huts along the trip, each with distance-from-here and a rough ETA.
+function hutsAhead(n) {
+  if (!hikeActive() || !n.hasFix || n.doneKm == null) return [];
+  const [, eSlot] = hikeBounds();
+  const startMain = mainSlotOfCode(S.start);
+  const spurTotalKm = S.start >= 1000 ? D.spur.route[D.spur.route.length - 1][2] / 1000 : 0;
+  const curAsc = (!n.onSpur && n.snap) ? D.route[n.snap.seg][4] : 0;
+  const items = [];
+  if (S.start >= 1000) items.push({ name: 'Kebnekaise', dist: D.spur.route[D.spur.kebIdx][2] / 1000, asc: 0 });
+  for (let k = startMain; k <= eSlot; k++)
+    items.push({ name: D.hutNames[k], dist: spurTotalKm + (cumKm(k) - cumKm(startMain)), asc: D.route[D.huts[k]][4] });
+  return items.filter(it => it.dist - n.doneKm > 0.1).slice(0, 4).map(it => {
+    const rem = it.dist - n.doneKm;
+    const ascAhead = (!n.onSpur && it.asc) ? Math.max(0, it.asc - curAsc) : 0;
+    return { name: it.name, rem, etaMin: naismithMin(rem, ascAhead, n.pace) };
+  });
+}
+
 // --- rendering: Now ---------------------------------------------------------
 function ring(frac, label) {
   const C = 289, off = C * (1 - Math.max(0, Math.min(1, frac)));
@@ -176,11 +194,16 @@ function ring(frac, label) {
     <text x="55" y="70" class="ringlbl">${label}</text></svg>`;
 }
 // Schematic north-up map of the whole trip (hike section + spur approach) + you.
-function tripMap() {
+function tripMap(n) {
   const [sSlot, eSlot] = hikeBounds();
   const startMain = hikeActive() ? mainSlotOfCode(S.start) : sSlot;   // include the junction hut
   const spurTrip = hikeActive() && S.start >= 1000;
   const i0 = D.huts[startMain], i1 = D.huts[eSlot];
+  // progress: how far along the main line / spur line we've walked (metres of cum); -1 = not there yet
+  const hasFix = n && n.hasFix;
+  const mainDone = (hasFix && !n.onSpur && n.snap) ? n.snap.cum : -1;
+  const spurDone = !spurTrip ? -1 : (n && n.onSpur ? n.doneKm * 1000 : (hasFix ? 1e12 : -1));
+  const DONE = '#b8c2cc';
 
   const all = [];
   if (spurTrip) D.spur.route.forEach(p => all.push([p[0], p[1]]));
@@ -197,25 +220,41 @@ function tripMap() {
   const X = (la, lo) => (offX + (lo - loMin) * coslat * sc).toFixed(1);
   const Y = (la, lo) => (offY + (laMax - la) * sc).toFixed(1);
 
+  // draw a polyline over a run of route points [a..b], splitting at the done/remaining boundary
+  const line = (pt, cum, doneCum, remStroke, dash) => {
+    const doneP = [], remP = [];
+    pt.forEach((p, i) => {
+      const s = `${X(p[0], p[1])},${Y(p[0], p[1])}`;
+      if (cum[i] <= doneCum) { doneP.push(s); if (i + 1 < pt.length && cum[i + 1] > doneCum) remP.push(s); }
+      else remP.push(s);
+    });
+    const d = dash ? ` stroke-dasharray="${dash}"` : '';
+    let s = '';
+    if (remP.length > 1) s += `<polyline points="${remP.join(' ')}" fill="none" stroke="${remStroke}" stroke-width="${dash ? 2.5 : 3}"${d}/>`;
+    if (doneP.length > 1) s += `<polyline points="${doneP.join(' ')}" fill="none" stroke="${DONE}" stroke-width="${dash ? 2.5 : 3}"${d}/>`;
+    return s;
+  };
+
   let svg = '';
-  if (spurTrip) {
-    const sp = D.spur.route.map(p => `${X(p[0], p[1])},${Y(p[0], p[1])}`).join(' ');
-    svg += `<polyline points="${sp}" fill="none" stroke="#2e7d4f" stroke-width="2.5" stroke-dasharray="5 3"/>`;
-  }
-  let mn = '';
-  for (let i = i0; i <= i1; i++) mn += `${X(D.route[i][0], D.route[i][1])},${Y(D.route[i][0], D.route[i][1])} `;
-  svg += `<polyline points="${mn}" fill="none" stroke="#2e7d4f" stroke-width="3"/>`;
+  if (spurTrip)
+    svg += line(D.spur.route.map(p => [p[0], p[1]]), D.spur.route.map(p => p[2]), spurDone, '#2e7d4f', '5 3');
+  const mpt = [], mcum = [];
+  for (let i = i0; i <= i1; i++) { mpt.push([D.route[i][0], D.route[i][1]]); mcum.push(D.route[i][2]); }
+  svg += line(mpt, mcum, mainDone, '#2e7d4f', 0);
 
   let huts = '';
   for (let k = startMain; k <= eSlot; k++) {
     const hi = D.huts[k], x = X(D.route[hi][0], D.route[hi][1]), y = Y(D.route[hi][0], D.route[hi][1]);
-    huts += `<rect x="${x - 3}" y="${y - 3}" width="6" height="6" fill="#1b2430"/>
-      <text x="${+x + 6}" y="${+y + 3}" font-size="9" fill="#444">${D.hutNames[k]}</text>`;
+    const passed = mainDone >= 0 && D.route[hi][2] <= mainDone;
+    huts += `<rect x="${x - 3}" y="${y - 3}" width="6" height="6" fill="${passed ? DONE : '#1b2430'}"/>
+      <text x="${+x + 6}" y="${+y + 3}" font-size="9" fill="${passed ? '#9aa4ad' : '#444'}">${D.hutNames[k]}</text>`;
   }
-  if (spurTrip) D.spur.stops.forEach(s => {
+  if (spurTrip) D.spur.stops.forEach((s, j) => {
     const x = X(s.lat, s.lon), y = Y(s.lat, s.lon);
-    huts += `<rect x="${x - 3}" y="${y - 3}" width="6" height="6" fill="#3d6a8a"/>
-      <text x="${+x + 6}" y="${+y + 3}" font-size="9" fill="#3d6a8a">${s.name}</text>`;
+    const scum = D.spur.route[j === D.spur.stops.length - 1 ? 0 : D.spur.kebIdx][2];  // Nikkaluokta ~start, Kebnekaise mid
+    const passed = spurDone >= 0 && (j === D.spur.stops.length - 1 ? 0 : scum) <= spurDone;
+    huts += `<rect x="${x - 3}" y="${y - 3}" width="6" height="6" fill="${passed ? DONE : '#3d6a8a'}"/>
+      <text x="${+x + 6}" y="${+y + 3}" font-size="9" fill="${passed ? '#9aa4ad' : '#3d6a8a'}">${s.name}</text>`;
   });
 
   const you = pos ? `<circle cx="${X(pos.lat, pos.lon)}" cy="${Y(pos.lat, pos.lon)}" r="6" fill="#c0392b"/>
@@ -249,6 +288,9 @@ function renderNow() {
     </div></div>
     ${n.totalKm ? `<div class="legbar"><i style="width:${Math.round((n.frac || 0) * 100)}%"></i></div>
     <div class="sub2"><b>${Math.round((n.frac || 0) * 100)}%</b> of hike · ${Math.round(n.doneKm)} of ${Math.round(n.totalKm)} km</div>` : ''}`;
+  const ahead = hutsAhead(n).slice(1);   // skip the immediate next (already the hero)
+  if (ahead.length) h += `<div class="ahead"><div class="ahh">Then</div>${ahead.map(a =>
+    `<div class="ah"><span class="ahn">${a.name}</span><span class="ahd">${a.rem.toFixed(1)} km · ${fmtETA(a.etaMin)}</span></div>`).join('')}</div>`;
   if (n.onSpur) h += `<p class="muted">On the Kebnekaise approach · ${n.approach}.</p>`;
   if (n.off) h += `<div class="warn">⚠ You seem to be more than 150 m off the trail line.</div>`;
   if (n.arrived) h += `<div class="warn" style="background:#e6f2ea;color:#1d5c39">✓ At ${n.next} — end of your section.</div>`;
@@ -256,7 +298,7 @@ function renderNow() {
     <div class="tile"><div class="tv">${n.altM != null ? n.altM : '—'}</div><div class="tl">alt m</div></div>
     <div class="tile"><div class="tv">${spd}</div><div class="tl">speed</div></div>
     <div class="tile"><div class="tv">${acc}</div><div class="tl">GPS acc</div></div>
-  </div>${tripMap()}
+  </div>${tripMap(n)}
   <button class="btn sec" id="refresh" style="width:100%;margin-top:12px"${locating ? ' disabled' : ''}>${locating ? 'Locating…' : '⟳ Update position'}</button>
   <p class="muted">Updated ${agoStr(lastFixMs)} · schematic map (line + huts only) — use a topo app for terrain. GPS is off between checks.</p></div>`;
   el.innerHTML = h;
@@ -401,31 +443,38 @@ function renderPlan() {
     <div class="field"><label>End</label><select id="selE">${hikeOptions(S.end)}</select></div>
     <p class="muted"><a href="#" id="fullRoute">Use full route</a> · the plan uses only this section.</p></div>`;
 
-  // day planner
-  const days = planDays();
-  const flexOpts = [0, 1, 2, 3].map(v =>
-    `<option value="${v}"${(S.dayFlex || 0) === v ? ' selected' : ''}>${v ? '± ' + v + ' h' : 'Strict (±0 h)'}</option>`).join('');
-  h += `<div class="card"><h2><span class="ic">📅</span>Day planner</h2>
-    <div class="row2">
-      <div class="field"><label>Target hours / day</label><input id="dayH" inputmode="numeric" value="${S.dayH}"></div>
-      <div class="field"><label>Flexibility</label><select id="dayFlex">${flexOpts}</select></div>
-    </div>`;
-  if (!days.length) h += `<p class="muted">Set a Start &amp; End to plan daily stages.</p>`;
-  days.forEach((d, i) => {
-    const hLo = Math.round(d.hrs), hHi = Math.round(d.hrsHi);
-    const hTxt = hHi > hLo ? `${hLo}–${hHi} h` : `~${hLo} h`;
-    h += `<div class="day"><div class="daynum">${i + 1}</div><div class="dayb">
-      <div class="dayr"><b>${d.from}</b> → <b>${d.to}</b></div>
-      <div class="daym"><span class="m">${Math.round(d.km)} km</span><span class="m">${hTxt}</span>
-      ${d.boat ? '<span class="m bt">⚓ boat</span>' : ''}</div>${dayNote(d)}</div></div>`;
-  });
-  if (days.length) h += `<p class="muted">${days.length} days at ~${S.dayH} h/day${S.dayFlex ? ` (up to ~${S.dayH + S.dayFlex} h)` : ''} · boat/bus days show a suggested start · STF stage figures.</p>`;
-  h += `</div>`;
+  const tab = S.planTab || 'days';
+  h += `<div class="subtab">
+    <button data-pt="days" class="${tab === 'days' ? 'active' : ''}">📅 Day planner</button>
+    <button data-pt="route" class="${tab === 'route' ? 'active' : ''}">🗺️ Route</button></div>`;
 
-  // elevation
+  if (tab === 'days') {
+    const days = planDays();
+    const flexOpts = [0, 1, 2, 3].map(v =>
+      `<option value="${v}"${(S.dayFlex || 0) === v ? ' selected' : ''}>${v ? '± ' + v + ' h' : 'Strict (±0 h)'}</option>`).join('');
+    h += `<div class="card"><h2><span class="ic">📅</span>Day planner</h2>
+      <div class="row2">
+        <div class="field"><label>Target hours / day</label><input id="dayH" inputmode="numeric" value="${S.dayH}"></div>
+        <div class="field"><label>Flexibility</label><select id="dayFlex">${flexOpts}</select></div>
+      </div>`;
+    if (!days.length) h += `<p class="muted">Set a Start &amp; End to plan daily stages.</p>`;
+    days.forEach((d, i) => {
+      const hLo = Math.round(d.hrs), hHi = Math.round(d.hrsHi);
+      const hTxt = hHi > hLo ? `${hLo}–${hHi} h` : `~${hLo} h`;
+      h += `<div class="day"><div class="daynum">${i + 1}</div><div class="dayb">
+        <div class="dayr"><b>${d.from}</b> → <b>${d.to}</b></div>
+        <div class="daym"><span class="m">${Math.round(d.km)} km</span><span class="m">${hTxt}</span>
+        ${d.boat ? '<span class="m bt">⚓ boat</span>' : ''}</div>${dayNote(d)}</div></div>`;
+    });
+    if (days.length) h += `<p class="muted">${days.length} days at ~${S.dayH} h/day${S.dayFlex ? ` (up to ~${S.dayH + S.dayFlex} h)` : ''} · boat/bus days show a suggested start · STF stage figures.</p>`;
+    h += `</div>`;
+    document.getElementById('p-plan').innerHTML = h;
+    wirePlan();
+    return;
+  }
+
+  // route tab: elevation + timeline
   h += `<div class="card"><h2><span class="ic">⛰️</span>Elevation profile</h2>${elevProfile()}</div>`;
-
-  // route timeline
   h += `<div class="card"><h2><span class="ic">🗺️</span>Route</h2>`;
   const cur = n.hasFix && !n.onSpur && n.snap ? n.snap.cum / 1000 : -1;
   h += `<ul class="tl">`;
@@ -454,12 +503,17 @@ function renderPlan() {
   }
   h += `</ul></div>`;
   document.getElementById('p-plan').innerHTML = h;
-
-  document.getElementById('selS').onchange = e => { S.start = +e.target.value; save(); renderAll(); };
-  document.getElementById('selE').onchange = e => { S.end = +e.target.value; save(); renderAll(); };
-  document.getElementById('dayH').onchange = e => { S.dayH = Math.max(2, Math.min(16, +e.target.value || 6)); save(); renderAll(); };
-  document.getElementById('dayFlex').onchange = e => { S.dayFlex = +e.target.value || 0; save(); renderAll(); };
-  document.getElementById('fullRoute').onclick = ev => { ev.preventDefault(); S.start = -1; S.end = -1; save(); renderAll(); };
+  wirePlan();
+}
+function wirePlan() {
+  const on = (id, ev, fn) => { const el = document.getElementById(id); if (el) el[ev] = fn; };
+  on('selS', 'onchange', e => { S.start = +e.target.value; save(); renderAll(); });
+  on('selE', 'onchange', e => { S.end = +e.target.value; save(); renderAll(); });
+  on('dayH', 'onchange', e => { S.dayH = Math.max(2, Math.min(16, +e.target.value || 6)); save(); renderAll(); });
+  on('dayFlex', 'onchange', e => { S.dayFlex = +e.target.value || 0; save(); renderAll(); });
+  on('fullRoute', 'onclick', ev => { ev.preventDefault(); S.start = -1; S.end = -1; save(); renderAll(); });
+  document.querySelectorAll('#p-plan .subtab button').forEach(b =>
+    b.onclick = () => { S.planTab = b.dataset.pt; save(); renderPlan(); });
 }
 
 // --- rendering: Info --------------------------------------------------------
