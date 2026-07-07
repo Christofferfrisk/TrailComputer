@@ -435,10 +435,12 @@ function renderPlan() {
     const done = cur >= 0 && cumKm(k) < cur;
     const cls = (!inHike ? 'dim' : '') + (done ? ' done' : '');
     const leg = st ? `${st.km} km · ${st.time}` : (k > 0 ? `${(cumKm(k) - cumKm(k - 1)).toFixed(1)} km` : 'start');
-    const tip = D.tips && D.tips[D.hutNames[k]];
+    const note = inHike && D.notes && D.notes[D.hutNames[k]];
+    const tip = inHike && D.tips && D.tips[D.hutNames[k]];
     h += `<li class="${cls}"><span class="node">${k + 1}</span>
       <span class="name">${D.hutNames[k]}${chips(D.hutNames[k])}</span>
       <span class="leg">${leg} · ${Math.round(cumKm(k))} km${D.transport[D.hutNames[k]] ? ' · 🚌 ' + D.transport[D.hutNames[k]] : ''}</span>
+      ${note ? `<span class="stagenote">ℹ️ ${note}</span>` : ''}
       ${tip ? `<span class="tip">💡 ${tip}</span>` : ''}</li>`;
     if (D.spur.afterHut === D.hutNames[k])
       D.spur.stops.forEach(s => {

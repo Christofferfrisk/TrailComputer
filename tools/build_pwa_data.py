@@ -87,10 +87,18 @@ tips = {
     "Aktse": "In clear weather, a side-trip up Skierffe - the photographers' favourite, with a huge view over Rapadalen and the Parte massif in Sarek.",
 }
 
+# Stage-specific practical notes, keyed by the hut the leg ends at (matches "stages").
+notes = {
+    "Sitojaure": "No shop - carry your own food. Streams for water on the way; a wind shelter at Autsutjvagge marks the halfway point. Steep climb at the start, high point ~775 m.",
+    "Aktse": "Starts with the mandatory boat across Kaskajaure and Kåbtajaure (from Sitojaure). Water is scarce on the open plateau - fill up in the birch forest below before the climb.",
+    "Pårte": "Starts with the boat across Laitaure - a self-service rowing boat or the motorboat. Enters Sarek National Park. No shop - carry provisions. Final descent is tricky when wet.",
+    "Kvikkjokk": "Rough and rocky in places, with a bridge over Tjåltajåkka. The slope at Tingstallstenen can turn into a stream in prolonged rain.",
+}
+
 data = {
     "route": route, "huts": huts, "hutNames": hut_names,
     "stages": stages, "stores": stores, "sauna": sauna, "station": station,
-    "transport": transport, "info": info, "tips": tips,
+    "transport": transport, "info": info, "tips": tips, "notes": notes,
     "spur": {"route": spur_route, "kebIdx": spur_keb_idx, "stops": keb_stops,
              "afterHut": after_hut, "junction": junction},
 }

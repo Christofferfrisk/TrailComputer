@@ -79,6 +79,8 @@ ul.tl li.spur .node{left:20px;width:13px;height:13px;border-radius:3px;transform
   font-variant-numeric:tabular-nums}
 .tip{display:block;font-size:12px;line-height:1.4;color:#5a4a1a;background:#fdf3d8;
   border:1px solid #f0e0a8;border-radius:8px;padding:6px 9px;margin-top:6px}
+.stagenote{display:block;font-size:12px;line-height:1.4;color:#25506e;background:#eaf2f8;
+  border:1px solid #cfe0ee;border-radius:8px;padding:6px 9px;margin-top:6px}
 .here{background:#fbe9e7;border-radius:8px;padding:8px 10px;margin:8px 0;font-size:13px;
   color:var(--warn);font-weight:600}
 .day{display:flex;gap:11px;align-items:center;background:#f6f8f7;border-radius:11px;
