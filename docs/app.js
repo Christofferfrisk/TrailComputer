@@ -475,7 +475,9 @@ function renderInfo() {
     app when you need it. This is a navigation aid, not a safety device: carry a paper map, a
     compass, and a satellite messenger.</p>
     <p class="muted">Map detail: this app draws a schematic line only. For terrain, use a topo
-    app (Fjällkartan / Lantmäteriet, Topo GPS, OsmAnd) with the region downloaded.</p></div>
+    app (Fjällkartan / Lantmäteriet, Topo GPS, OsmAnd) with the region downloaded.</p>
+    <p class="muted">© 2026 Christoffer Frisk · <a href="https://github.com/Christofferfrisk/TrailComputer">MIT-licensed source</a>.
+    Route, hut and stage data from Svenska Turistföreningen (STF).</p></div>
   <div class="card"><h2><span class="ic">🧪</span>Test mode</h2>
     <label class="toggle"><input type="checkbox" id="sim" ${S.sim ? 'checked' : ''}>
     Simulate a position on the route</label>
