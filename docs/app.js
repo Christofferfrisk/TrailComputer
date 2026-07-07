@@ -389,7 +389,7 @@ function dayNote(d) {
       h += `<div class="daynote sched"><b>🕗 Start by ~${d.startSug}</b> — ~${b.walkLo}–${b.walkHi} h to ${b.hut} for the ${b.time} ${b.mode}. ${b.label}${tail}.</div>`;
   }
   if (d.walkBoat)
-    h += `<div class="daynote sched">⚓ A boat crossing this day runs to a timetable — confirm the departure the evening before.</div>`;
+    h += `<div class="daynote sched">⚓ A boat crossing this day — ask the hut warden the evening before (warden shuttle or self-service rowboat).</div>`;
   return h;
 }
 function renderPlan() {
@@ -429,8 +429,10 @@ function renderPlan() {
   h += `<div class="card"><h2><span class="ic">🗺️</span>Route</h2>`;
   const cur = n.hasFix && !n.onSpur && n.snap ? n.snap.cum / 1000 : -1;
   h += `<ul class="tl">`;
+  const spurActive = hikeActive() && S.start >= 1000;
+  const dispStart = spurActive ? mainSlotOfCode(S.start) : sSlot;   // include the junction hut (Singi)
   for (let k = 0; k < D.hutNames.length; k++) {
-    const inHike = k >= sSlot && k <= eSlot;
+    const inHike = k >= dispStart && k <= eSlot;
     const st = D.stages[D.hutNames[k]];
     const done = cur >= 0 && cumKm(k) < cur;
     const cls = (!inHike ? 'dim' : '') + (done ? ' done' : '');
@@ -444,8 +446,10 @@ function renderPlan() {
       ${tip ? `<span class="tip">💡 ${tip}</span>` : ''}</li>`;
     if (D.spur.afterHut === D.hutNames[k])
       D.spur.stops.forEach(s => {
-        h += `<li class="spur dim"><span class="node"></span><span class="name">${s.name}${chips(s.name)}</span>
-          <span class="leg">${s.legKm} km · ${s.time}${s.note ? ' · ' + s.note : ''}${D.transport[s.name] ? ' · 🚌 ' + D.transport[s.name] : ''}</span></li>`;
+        const snote = spurActive && D.notes && D.notes[s.name];
+        h += `<li class="spur${spurActive ? '' : ' dim'}"><span class="node"></span><span class="name">${s.name}${chips(s.name)}</span>
+          <span class="leg">${s.legKm} km · ${s.time}${s.note ? ' · ' + s.note : ''}${D.transport[s.name] ? ' · 🚌 ' + D.transport[s.name] : ''}</span>
+          ${snote ? `<span class="stagenote">ℹ️ ${snote}</span>` : ''}</li>`;
       });
   }
   h += `</ul></div>`;
