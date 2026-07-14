@@ -164,24 +164,6 @@ function computeNow() {
   return out;
 }
 
-// The next few huts along the trip, each with distance-from-here and a rough ETA.
-function hutsAhead(n) {
-  if (!hikeActive() || !n.hasFix || n.doneKm == null) return [];
-  const [, eSlot] = hikeBounds();
-  const startMain = mainSlotOfCode(S.start);
-  const spurTotalKm = S.start >= 1000 ? D.spur.route[D.spur.route.length - 1][2] / 1000 : 0;
-  const curAsc = (!n.onSpur && n.snap) ? D.route[n.snap.seg][4] : 0;
-  const items = [];
-  if (S.start >= 1000) items.push({ name: 'Kebnekaise', dist: D.spur.route[D.spur.kebIdx][2] / 1000, asc: 0 });
-  for (let k = startMain; k <= eSlot; k++)
-    items.push({ name: D.hutNames[k], dist: spurTotalKm + (cumKm(k) - cumKm(startMain)), asc: D.route[D.huts[k]][4] });
-  return items.filter(it => it.dist - n.doneKm > 0.1).slice(0, 4).map(it => {
-    const rem = it.dist - n.doneKm;
-    const ascAhead = (!n.onSpur && it.asc) ? Math.max(0, it.asc - curAsc) : 0;
-    return { name: it.name, rem, etaMin: naismithMin(rem, ascAhead, n.pace) };
-  });
-}
-
 // --- rendering: Now ---------------------------------------------------------
 function ring(frac, label) {
   const C = 289, off = C * (1 - Math.max(0, Math.min(1, frac)));
@@ -291,9 +273,6 @@ function renderNow() {
       ? `<b>${Math.round(n.totalKm - n.doneKm)}</b> km left`
       : `<b>${Math.round(n.doneKm)}</b> of ${Math.round(n.totalKm)} km`}
       <button class="lnk" id="distTog">${S.distLeft ? 'show done' : 'show left'}</button></div>` : ''}`;
-  const ahead = hutsAhead(n).slice(1);   // skip the immediate next (already the hero)
-  if (ahead.length) h += `<div class="ahead"><div class="ahh">Then</div>${ahead.map(a =>
-    `<div class="ah"><span class="ahn">${a.name}</span><span class="ahd">${a.rem.toFixed(1)} km · ${fmtETA(a.etaMin)}</span></div>`).join('')}</div>`;
   if (n.onSpur) h += `<p class="muted">On the Kebnekaise approach · ${n.approach}.</p>`;
   if (n.off) h += `<div class="warn">⚠ You seem to be more than 150 m off the trail line.</div>`;
   if (n.arrived) h += `<div class="warn" style="background:#e6f2ea;color:#1d5c39">✓ At ${n.next} — end of your section.</div>`;
