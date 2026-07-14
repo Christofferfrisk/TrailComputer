@@ -97,7 +97,7 @@ notes = {
     "Vakkotavare": "Either the 09:10 bus + ferry (see the day planner) or the 30 km walk, which most split into two days.",
     "Saltoluokta": "Steep climb early to ~775 m; streams for water; a wind shelter at Autsutjvagge halfway. Sitojaure has no shop.",
     "Sitojaure": "Boat across Kaskajaure and Kåbtajaure at the start - motorboat, usually ~09:00 & 17:00. Water is scarce on the open plateau - fill up in the birch forest below before the climb.",
-    "Aktse": "Boat across Laitaure at the start - self-service rowing boat or the motorboat (usually ~09:00 & 17:00). Enters Sarek National Park; the final descent is tricky when wet. Pårte has no shop.",
+    "Aktse": "Boat across Laitaure at the start - self-service rowing boat or the motorboat (usually ~09:00 & 17:00; bring cash for it). Enters Sarek National Park; the final descent is tricky when wet. Pårte has no shop.",
     "Pårte": "Rough and rocky in places, with a bridge over Tjåltajåkka; the Tingstallstenen slope can turn into a stream in prolonged rain.",
 }
 
