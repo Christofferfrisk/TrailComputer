@@ -8,6 +8,12 @@ An offline phone app for the Kungsleden in Swedish Lapland. It shows where you
 are, how far to the next hut, and how your days add up — with no phone signal
 and nothing to install from a store.
 
+<p align="center">
+  <img src="docs/img/app-now.png" width="270" alt="Now screen: distance, ETA and progress map">
+  &nbsp;&nbsp;
+  <img src="docs/img/app-plan.png" width="270" alt="Day planner with per-stage times and boat/bus notes">
+</p>
+
 ## Get it on your phone
 
 <img src="docs/img/qr.png" width="150" align="right" alt="QR code to the app">
@@ -88,13 +94,6 @@ python -m http.server 8137 --directory docs
 The app is served from the `docs/` folder by GitHub Pages. To publish it:
 **Settings → Pages → Source: Deploy from a branch → `main` / `docs` → Save.**
 The address above goes live about a minute later.
-
-## The original hardware version
-
-This started as a battery-powered e-paper handheld built on an ESP32. That
-device still lives in the repo (`src/`); its build, wiring and flashing guide is
-in **[docs/HARDWARE.md](docs/HARDWARE.md)**. The phone app replaced it to save
-weight on the trail.
 
 ## Licence
 
