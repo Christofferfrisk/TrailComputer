@@ -94,7 +94,7 @@ notes = {
     "Singi": "Follows the Tjäktjajåkka - water and rest spots almost everywhere early, then rougher and bog-bridged nearer Kaitumjaure.",
     "Kaitumjaure": "A renovated Sámi kåta ~4 km on gives emergency shelter. Climbs to 780 m, then drops steeply; a few boggy patches up top.",
     "Teusajaure": "Cross the lake first - warden/motorboat shuttle (usually ~09:00 & 17:00) or self-service rowboat, but it can be very hard to row in wind. Then a long climb into Stora Sjöfallet NP. Vakkotavare has no shop.",
-    "Vakkotavare": "Either the 14:40 bus + boat (see the day planner) or the 30 km walk, which most split into two days.",
+    "Vakkotavare": "Either the 09:10 bus + ferry (see the day planner) or the 30 km walk, which most split into two days.",
     "Saltoluokta": "Steep climb early to ~775 m; streams for water; a wind shelter at Autsutjvagge halfway. Sitojaure has no shop.",
     "Sitojaure": "Boat across Kaskajaure and Kåbtajaure at the start - motorboat, usually ~09:00 & 17:00. Water is scarce on the open plateau - fill up in the birch forest below before the climb.",
     "Aktse": "Boat across Laitaure at the start - self-service rowing boat or the motorboat (usually ~09:00 & 17:00). Enters Sarek National Park; the final descent is tricky when wet. Pårte has no shop.",
