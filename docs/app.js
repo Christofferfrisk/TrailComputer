@@ -432,7 +432,7 @@ function dayNote(d) {
       h += `<div class="daynote sched"><b>🕗 Start by ~${d.startSug}</b> — ~${b.walkLo}–${b.walkHi} h to ${b.hut} for the ${b.time} ${b.mode}. ${b.label}${tail}.</div>`;
   }
   if (d.walkBoat)
-    h += `<div class="daynote sched">⚓ A boat crossing this day — ask the hut warden the evening before (warden shuttle or self-service rowboat).</div>`;
+    h += `<div class="daynote sched">⚓ A boat crossing this day — the motorboat usually runs about 09:00 and 17:00; confirm with the hut warden.</div>`;
   return h;
 }
 function renderPlan() {

@@ -74,11 +74,11 @@ info = {
     "emergency": "In an emergency call 112 and ask for Fjallraddningen (mountain rescue). Give the nearest hut or a lake/peak name. Reception is patchy - a satellite messenger is the reliable option.",
     "marking": "Summer route is marked with cairns and red-painted poles; winter with red crosses. Boats cross Teusajaure and the Kebnats sound (Saltoluokta) - both run on a timetable, not on demand.",
     "boatShortcut": "Nikkaluokta start: a boat across Laddjujavri runs several times a day and cuts about 6 km off the 19 km leg to Kebnekaise.",
-    "lastLeg": "Skip the 30 km Vakkotavare-Saltoluokta walk: the bus leaves Vakkotavare 14:40 and reaches Kebnats 15:40 (roadtoritsem.com), then the 16:55 M/S Langas boat crosses to Saltoluokta. Boat runs 18 Jun-20 Sep, daily - Saltoluokta->Kebnats 10:00 & 16:30, Kebnats->Saltoluokta 10:25 & 16:55. Miss the 14:40 bus and there is no later connection the same day, so plan the day around it.",
+    "lastLeg": "Skip the 30 km Vakkotavare-Saltoluokta walk: the one bus leaves Vakkotavare 09:10 and connects at Kebnats to the M/S Langas ferry across to Saltoluokta. Ferry runs 18 Jun-20 Sep, daily - Saltoluokta->Kebnats 10:00 & 16:30, Kebnats->Saltoluokta 10:25 & 16:55. It is a single morning bus, so overnight at Vakkotavare and catch it early.",
     # Fixed departures the day planner works backwards from. buffer = minutes to be there early.
     "depart": {
-        "Vakkotavare": {"time": "14:40", "mode": "bus", "buffer": 15, "arrive": "17:10",
-                        "label": "Bus to Kebnats (arr 15:40), then the 16:55 M/S Langas boat to Saltoluokta"},
+        "Vakkotavare": {"time": "09:10", "mode": "bus", "buffer": 15, "arrive": "10:40",
+                        "label": "Bus to Kebnats, then the morning M/S Langas ferry (10:25) to Saltoluokta"},
     },
 }
 
@@ -93,11 +93,11 @@ notes = {
     "Kebnekaise Fjällstation": "Ahead: the narrow, dramatic Laddjuvagge below steep walls, then an exposed summit ridge with big views. Singi has no shop.",
     "Singi": "Follows the Tjäktjajåkka - water and rest spots almost everywhere early, then rougher and bog-bridged nearer Kaitumjaure.",
     "Kaitumjaure": "A renovated Sámi kåta ~4 km on gives emergency shelter. Climbs to 780 m, then drops steeply; a few boggy patches up top.",
-    "Teusajaure": "Cross the lake first - warden boat shuttle or self-service rowboat, but it can be very hard to row in wind. Then a long climb into Stora Sjöfallet NP. Vakkotavare has no shop.",
+    "Teusajaure": "Cross the lake first - warden/motorboat shuttle (usually ~09:00 & 17:00) or self-service rowboat, but it can be very hard to row in wind. Then a long climb into Stora Sjöfallet NP. Vakkotavare has no shop.",
     "Vakkotavare": "Either the 14:40 bus + boat (see the day planner) or the 30 km walk, which most split into two days.",
     "Saltoluokta": "Steep climb early to ~775 m; streams for water; a wind shelter at Autsutjvagge halfway. Sitojaure has no shop.",
-    "Sitojaure": "Boat across Kaskajaure and Kåbtajaure at the start. Water is scarce on the open plateau - fill up in the birch forest below before the climb.",
-    "Aktse": "Boat across Laitaure at the start - self-service rowing boat or the motorboat. Enters Sarek National Park; the final descent is tricky when wet. Pårte has no shop.",
+    "Sitojaure": "Boat across Kaskajaure and Kåbtajaure at the start - motorboat, usually ~09:00 & 17:00. Water is scarce on the open plateau - fill up in the birch forest below before the climb.",
+    "Aktse": "Boat across Laitaure at the start - self-service rowing boat or the motorboat (usually ~09:00 & 17:00). Enters Sarek National Park; the final descent is tricky when wet. Pårte has no shop.",
     "Pårte": "Rough and rocky in places, with a bridge over Tjåltajåkka; the Tingstallstenen slope can turn into a stream in prolonged rain.",
 }
 
