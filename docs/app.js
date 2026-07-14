@@ -3,7 +3,7 @@ const D = window.TC_DATA;
 const R2D = 180 / Math.PI, D2R = Math.PI / 180;
 
 // --- persisted settings -----------------------------------------------------
-const S = Object.assign({ start: -1, end: -1, dayH: 6, dayFlex: 1, planTab: 'days', awake: false, sim: false, simF: 0 },
+const S = Object.assign({ start: -1, end: -1, dayH: 6, dayFlex: 1, planTab: 'days', nowView: 'map', distLeft: false, awake: false, sim: false, simF: 0 },
   JSON.parse(localStorage.getItem('tc') || '{}'));
 const save = () => localStorage.setItem('tc', JSON.stringify(S));
 
@@ -287,7 +287,10 @@ function renderNow() {
       <div class="sub">arrive <b>~${hhmm(lastFixMs + n.etaMin * 60000)}</b> <span class="dim">· as of ${hhmm(lastFixMs)}</span></div>
     </div></div>
     ${n.totalKm ? `<div class="legbar"><i style="width:${Math.round((n.frac || 0) * 100)}%"></i></div>
-    <div class="sub2"><b>${Math.round((n.frac || 0) * 100)}%</b> of hike · ${Math.round(n.doneKm)} of ${Math.round(n.totalKm)} km</div>` : ''}`;
+    <div class="sub2"><b>${Math.round((n.frac || 0) * 100)}%</b> of hike · ${S.distLeft
+      ? `<b>${Math.round(n.totalKm - n.doneKm)}</b> km left`
+      : `<b>${Math.round(n.doneKm)}</b> of ${Math.round(n.totalKm)} km`}
+      <button class="lnk" id="distTog">${S.distLeft ? 'show done' : 'show left'}</button></div>` : ''}`;
   const ahead = hutsAhead(n).slice(1);   // skip the immediate next (already the hero)
   if (ahead.length) h += `<div class="ahead"><div class="ahh">Then</div>${ahead.map(a =>
     `<div class="ah"><span class="ahn">${a.name}</span><span class="ahd">${a.rem.toFixed(1)} km · ${fmtETA(a.etaMin)}</span></div>`).join('')}</div>`;
@@ -298,11 +301,20 @@ function renderNow() {
     <div class="tile"><div class="tv">${n.altM != null ? n.altM : '—'}</div><div class="tl">alt m</div></div>
     <div class="tile"><div class="tv">${spd}</div><div class="tl">speed</div></div>
     <div class="tile"><div class="tv">${acc}</div><div class="tl">GPS acc</div></div>
-  </div>${tripMap(n)}
+  </div>
+  <div class="subtab" style="margin-top:12px">
+    <button data-nv="map" class="${S.nowView === 'elev' ? '' : 'active'}">🗺️ Map</button>
+    <button data-nv="elev" class="${S.nowView === 'elev' ? 'active' : ''}">⛰️ Profile</button>
+  </div>
+  ${S.nowView === 'elev' ? `<div class="mapbox" style="padding:6px 4px">${elevProfile(n)}</div>` : tripMap(n)}
   <button class="btn sec" id="refresh" style="width:100%;margin-top:12px"${locating ? ' disabled' : ''}>${locating ? 'Locating…' : '⟳ Update position'}</button>
-  <p class="muted">Updated ${agoStr(lastFixMs)} · schematic map (line + huts only) — use a topo app for terrain. GPS is off between checks.</p></div>`;
+  <p class="muted">Updated ${agoStr(lastFixMs)} · ${S.nowView === 'elev' ? 'elevation of your hike, red dot = you' : 'schematic map (line + huts only)'} — use a topo app for terrain. GPS is off between checks.</p></div>`;
   el.innerHTML = h;
   wireRefresh();
+  const dt = document.getElementById('distTog');
+  if (dt) dt.onclick = () => { S.distLeft = !S.distLeft; save(); renderNow(); };
+  document.querySelectorAll('#p-now .subtab button').forEach(b =>
+    b.onclick = () => { S.nowView = b.dataset.nv; save(); renderNow(); });
 }
 
 // --- rendering: Plan --------------------------------------------------------
@@ -390,9 +402,10 @@ const clock = t => { t = ((t % 1440) + 1440) % 1440; return String(Math.floor(t 
 const timeMinus = (hhmm, h) => clock(toMin(hhmm) - Math.round(h * 60));
 const timePlus = (hhmm, h) => clock(toMin(hhmm) + Math.round(h * 60));
 
-function elevProfile() {
+function elevProfile(n) {
   const [sSlot, eSlot] = hikeBounds();
-  const i0 = D.huts[sSlot], i1 = D.huts[eSlot];
+  const dispStart = (hikeActive() && S.start >= 1000) ? mainSlotOfCode(S.start) : sSlot;  // include junction hut
+  const i0 = D.huts[dispStart], i1 = D.huts[eSlot];
   let e0 = 1e9, e1 = -1e9;
   for (let i = i0; i <= i1; i++) { e0 = Math.min(e0, D.route[i][3]); e1 = Math.max(e1, D.route[i][3]); }
   if (e1 - e0 < 1) e1 = e0 + 1;
@@ -403,15 +416,24 @@ function elevProfile() {
   let pts = '';
   for (let i = i0; i <= i1; i++) pts += `${X(D.route[i][2] / 1000).toFixed(1)},${Y(D.route[i][3]).toFixed(1)} `;
   let huts = '';
-  for (let k = sSlot; k <= eSlot; k++) {
+  for (let k = dispStart; k <= eSlot; k++) {
     const x = X(cumKm(k)), y = Y(D.route[D.huts[k]][3]);
     huts += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5" fill="#1d5c39"/>`;
+  }
+  let you = '';
+  if (n && n.hasFix && !n.onSpur && n.snap) {
+    const ck = n.snap.cum / 1000;
+    if (ck >= km0 - 0.05 && ck <= km1 + 0.05) {
+      const el = D.route[n.snap.seg][3], x = X(ck), y = Y(el);
+      you = `<line x1="${x.toFixed(1)}" y1="${pT}" x2="${x.toFixed(1)}" y2="${base}" stroke="#c0392b" stroke-width="1" stroke-dasharray="2 2"/>
+        <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5" fill="#c0392b" stroke="#fff" stroke-width="1.5"/>`;
+    }
   }
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
     <polyline points="${pts}" fill="none" stroke="#2e7d4f" stroke-width="1.6"/>
     <line x1="${pL}" y1="${base}" x2="${pL + pw}" y2="${base}" stroke="#c7ccd2"/>
     <text x="2" y="${pT + 6}" font-size="9" fill="#697483">${Math.round(e1)} m</text>
-    <text x="2" y="${base}" font-size="9" fill="#697483">${Math.round(e0)} m</text>${huts}
+    <text x="2" y="${base}" font-size="9" fill="#697483">${Math.round(e0)} m</text>${huts}${you}
     <text x="${pL}" y="${base + 15}" font-size="11" font-weight="bold">▲ ${codeName(S.start)}</text>
     <text x="${pL + pw}" y="${base + 15}" font-size="11" font-weight="bold" text-anchor="end">${codeName(S.end)} ▲</text>
   </svg>`;
@@ -474,7 +496,7 @@ function renderPlan() {
   }
 
   // route tab: elevation + timeline
-  h += `<div class="card"><h2><span class="ic">⛰️</span>Elevation profile</h2>${elevProfile()}</div>`;
+  h += `<div class="card"><h2><span class="ic">⛰️</span>Elevation profile</h2>${elevProfile(n)}</div>`;
   h += `<div class="card"><h2><span class="ic">🗺️</span>Route</h2>`;
   const cur = n.hasFix && !n.onSpur && n.snap ? n.snap.cum / 1000 : -1;
   h += `<ul class="tl">`;
