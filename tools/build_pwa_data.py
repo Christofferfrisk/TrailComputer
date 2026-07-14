@@ -99,6 +99,10 @@ notes = {
     "Sitojaure": "Boat across Kaskajaure and Kåbtajaure at the start - motorboat, usually ~09:00 & 17:00. Water is scarce on the open plateau - fill up in the birch forest below before the climb.",
     "Aktse": "Boat across Laitaure at the start - self-service rowing boat or the motorboat (usually ~09:00 & 17:00; bring cash for it). Enters Sarek National Park; the final descent is tricky when wet. Pårte has no shop.",
     "Pårte": "Rough and rocky in places, with a bridge over Tjåltajåkka; the Tingstallstenen slope can turn into a stream in prolonged rain.",
+    "Kvikkjokk": "Starts with a 3 km motorboat over Lake Sakkat - pre-book (kvikkjokk-turism.se / battrafikikvikkjokk.se); no rowboats. A remote stretch begins: carry 1-2 days' food, as several stages have only tent sites or emergency shelters.",
+    "Vuonatviken": "Pre-book the Lake Riebnes motorboat (vuonatjviken.com), then a 400 m self-service rowboat across Kapellströmmarna - a boat must sit on each side, so you may have to row three times. Steep climbs; well-stocked shop at Jäkkvik.",
+    "Jäckvikk": "About 22 km, 9-10 h over the north slope of Pieljekaise (Pieljekaise National Park). Water is limited - plan ahead. Café and shop at Adolfström.",
+    "Adolfström": "An optional pre-booked motorboat to Bäverholmen saves ~8 km. Then long, remote stages with no shops: Sjnulttjie is an emergency shelter only and the Rävfallet leg is ~27 km, the longest on the trail. Carry all provisions and watch the trail markers in poor weather.",
 }
 
 data = {
